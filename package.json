@@ -1,0 +1,39 @@
+{
+  "name": "@soenderby/parser-generator",
+  "version": "1.0.0",
+  "description": "parser generator using parser combinators",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --require @babel/register --require @babel/polyfill 'test/**/**.test.js'"
+  },
+  "keywords": [
+    "parser"
+  ],
+  "author": "Jakob Sønderby Kristensen",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/polyfill": "^7.12.1",
+    "ramda": "^0.27.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.14.5",
+    "@babel/core": "^7.14.6",
+    "@babel/node": "^7.14.7",
+    "@babel/preset-env": "^7.14.7",
+    "@babel/register": "^7.14.5",
+    "chai": "^4.3.4",
+    "chai-almost": "^1.0.1",
+    "mocha": "^8.4.0"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soenderby/parser-generator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/soenderby/parser-generator/issues"
+  },
+  "homepage": "https://github.com/soenderby/parser-generator#readme"
+}
