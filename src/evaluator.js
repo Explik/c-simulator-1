@@ -1,4 +1,196 @@
-import {flatten, declaration, addAssign, and, assign, intConstant, invoke, lessThanOrEqual, statement, iff} from "./tree";
+import {
+    flatten,
+    declaration,
+    addAssign,
+    and,
+    assign,
+    intConstant,
+    invoke,
+    lessThanOrEqual,
+    statement,
+    iff,
+    withLeft,
+    withRight,
+    isIdentifier,
+    isBinary,
+    isConstant,
+    isExpression,
+    isAnd,
+    isTrue,
+    numericalValue,
+    isStatement,
+    isEqual,
+    isAssign,
+    isAddAssign, withValue, isIncrement, hasLeft, hasRight, hasValue, isInvoke, withArguments, withArgument
+} from "./tree";
+
+/** @typedef {Object} State
+ *  @property {Object} expression
+ *  @property {Object[]} variables
+ *  @property {string} stdout
+ */
+
+function getValue(state, identifier) {
+    if (state.variables.some(v => v.identifier === identifier)) throw new Error("Variable is not yet declared");
+    return state.variables.find(v => v.identifier === identifier).value;
+}
+
+function isVariable(variable) {
+    return isIdentifier(variable.identifier) && isConstant(variable.value);
+}
+
+/**
+ *
+ * @param {State} state
+ * @param expr
+ * @returns {State}
+ */
+function withExpression(state, expr) {
+    if (!isExpression(expr)) throw new Error("expr is not an expression");
+    return { ...state, expression: expr };
+}
+
+/**
+ *
+ * @param {State} state
+ * @param expr
+ * @param variable
+ * @returns {State}
+ */
+function withExpressionAndVariable(state, expr, variable) {
+    if (!isExpression(expr)) throw new Error("expr is not an expression");
+    if (!isVariable(variable)) throw new Error("variable is not an variable");
+    const variables = [...state.variables.filter(v => v.identifier !== variable.identifier), variable.identifier];
+    return { ...state, expression: expr, variables: variables };
+}
+
+/**
+ *
+ * @param {State} state
+ * @param expr
+ * @param variables
+ * @returns {State}
+ */
+function withExpressionAndVariables(state, expr, variables) {
+    if (!isExpression(expr)) throw new Error("expr is not an expression");
+    if (variables.some(v => !isVariable(v))) throw new Error("variables contains non-variable");
+    return { ...state, expression: expr, variables: variables };
+}
+
+/**
+ *
+ * @param {State} state
+ * @param expr
+ * @param output
+ * @returns {State}
+ */
+function withExpressionAndStdout(state, expr, output) {
+    if (!isExpression(expr)) throw new Error("expr is not an expression");
+    if (typeof output !== "string") throw new Error("output is not a string");
+    const stdout = state.stdout + output;
+    return { ...state, expression: expr, stdout: stdout };
+}
+
+/**
+ *
+ * @param {State} state
+ * @param statement
+ * @returns {State}
+ */
+function withStatement(state, statement) {
+    if (!isStatement(statement)) throw new Error("statement is not a statement");
+    return { ...state, currentStatement: statement };
+}
+
+function hasVariable(state, identifier) {
+    return false;
+}
+
+/**
+ *
+ * @param {State} state
+ * @param callback
+ * @returns {State}
+ */
+function evaluateExpression(state, callback) {
+    let applyCallback = (node) => callback(withExpression(state, node));
+
+    // Replaces variables, operands and arguments with constants
+    if (isIdentifier(state.expression)) {
+        const variable = state.variables.find(v => v.identifier === node);
+        if (!variable) throw new Error("Unrecognized identifier " + node.name);
+        return withExpressionAndVariables(state.expression, variable.value, state.variables);
+    }
+    if (hasLeft(state.expression) && !isConstant(state.expression.left)) {
+        const {expression, variables} = applyCallback(state.expression.left);
+        return withExpressionAndVariables(state, withLeft(state.expression, expression), variables);
+    }
+    if (hasRight(state.expression) && !isConstant(state.expression.right)) {
+        const {expression, variables} = applyCallback(state.expression.right);
+        return withExpressionAndVariables(state, withLeft(state.expression, expression), variables);
+    }
+    if (hasValue(state.expression) && !isConstant(state.expression.value)) {
+        const {expression, variables} = applyCallback(state.expression.value);
+        return withExpressionAndVariables(state, withValue(state.expression, expression), variables);
+    }
+    if (isInvoke(state.expression)) {
+        const args = state.expression.arguments;
+        const argIndex = args.findIndex(n => !isConstant(n));
+
+        if (argIndex !== -1) {
+            const {expression, variables} = applyCallback(args[argIndex]);
+            return withExpressionAndVariables(state, withArgument(state.expression, expression, argIndex), variables);
+        }
+    }
+
+    // Replaces operations with constants
+    if (isAnd(state.expression)) {
+        const expression = intConstant(isTrue(state.expression.left) && isTrue(state.expression.right) ? 1 : 0);
+        return withExpression(state, expression);
+    }
+    if (lessThanOrEqual(state.expression)) {
+        const expression = intConstant(numericalValue(state.expression.left) <= numericalValue(state.expression.right) ? 1 : 0);
+        return withExpression(state, expression);
+    }
+    if (isEqual(state.expression)) {
+        const expression = intConstant(numericalValue(state.expression.left) === numericalValue(state.expression.right) ? 1 : 0);
+        return withExpression(state, expression);
+    }
+    if (isAssign(state.expression)) {
+        if (!hasVariable(state, state.expression.identifier))
+            throw new Error("Identifier " + JSON.stringify(state.expression.identifier) + "has not been declared yet");
+
+        return withExpressionAndVariable(state, state.expression.value, state.expression);
+    }
+    if (isAddAssign(state.expression)) {
+        if (!hasVariable(state, state.expression.identifier))
+            throw new Error("Identifier " + JSON.stringify(state.expression.identifier) + "has not been declared yet");
+
+        const expression = intConstant(numericalValue(getValue(state.expression.identifier)) + numericalValue(state.expression.right))
+        return withExpressionAndVariable(state, expression, expression);
+    }
+    if (isIncrement(state.expression)) {
+        if (!hasVariable(state, state.expression.identifier))
+            throw new Error("Identifier " + JSON.stringify(state.expression.identifier) + "has not been declared yet");
+
+        const expression = intConstant(numericalValue(getValue(state.expression.identifier)));
+        const variable = intConstant(numericalValue(getValue(state.expression.identifier)) + 1);
+        return withExpressionAndVariable(state, expression, variable);
+    }
+    if (isInvoke(state.expression, "printf")) {
+        const args = state.expression.arguments;
+        const printValue = args[0].value;
+        if(args.length >= 1) printValue.replace("%d", args[1].value);
+
+        return withExpressionAndStdout(state, undefined, printValue);
+    }
+
+    throw new Error("Unsupported node " + JSON.stringify(node));
+}
+
+function evaluateExpressionRecursively(state) {
+    return evaluateExpression(state, evaluateExpressionRecursively);
+}
 
 function findNextStatement(root, node, state) {
     const allStatements = flatten(root).filter(n => n.type !== "statement");
@@ -55,10 +247,15 @@ function findNextStatement(root, node, state) {
     }
 }
 
+
 // evaluate(root)
 // evaluate(root, state)
 // evaluate(root, node, state)
-function evaluate(root, node, state) {
+function evaluateRecursively(root, node, state) {
+    return evaluate(root, node, state, evaluateRecursively);
+}
+
+function evaluate(root, node, state, callback) {
     if (arguments.length === 1) {
         node = root;
         state = { variables: [], currentStatement: root, currentExpression: root, stdout: "" }
@@ -68,99 +265,8 @@ function evaluate(root, node, state) {
         state = node;
     }
 
-    if (node.type === "identifier") {
-        const variable = node.variables.find(v => v.identifier === node);
-        if (!variable) throw new Error("Unrecognized identifier " + node.name);
-        return { ...state, currentExpression: variable.value };
-    }
-    if (node.type === "expression" && node.operator === "and") {
-        if(node.left.type !== "constant") {
-            const newState = evaluate(root, node.left, state);
-            return { ...newState, currentExpression: and(newState.currentExpression, node.right) };
-        }
-        if (node.right.type !== "constant") {
-            const newState = evaluate(root, node.right, state);
-            return { ...newState, currentExpression: and(node.left, newState.currentExpression) };
-        }
-        const value = ((node.left.value !== 0 && node.left.value !== null) && (node.right.value !== 0 && node.right.value !== null)) ? 1 : 0;
-        return { ...state, currentExpression: intConstant(value) };
-    }
-    if (node.type === "expression" && node.operator === "less-than-or-equal") {
-        if(node.left.type !== "constant") {
-            const newState = evaluate(root, node.left, state);
-            return { ...newState, currentExpression: lessThanOrEqual(newState.currentExpression, node.right) };
-        }
-        if (node.right.type !== "constant") {
-            const newState = evaluate(root, node.right, state);
-            return { ...newState, currentExpression: lessThanOrEqual(node.left, newState.currentExpression) };
-        }
-        const value = node.left.value <= node.right.value;
-        return { ...state, currentExpression: intConstant(value) };
-    }
-    if (node.type === "expression" && node.operator === "equal") {
-        if(node.left.type !== "constant") {
-            const newState = evaluate(root, node.left, state);
-            return { ...newState, currentExpression: equal(newState.currentExpression, node.right) };
-        }
-        if (node.right.type !== "constant") {
-            const newState = evaluate(root, node.right, state);
-            return { ...newState, currentExpression: equal(node.left, newState.currentExpression) };
-        }
-        const value = node.left.value === node.right.value;
-        return { ...state, currentExpression: intConstant(value) };
-    }
-    if (node.type === "expression" && node.operator === "assign") {
-        if (node.value.type !== "constant") {
-            const newState = evaluate(root, node.value, state);
-            return { ...newState, currentExpression: assign(node.identifier, newState.value) };
-        }
-        const variables = node.variables.filter(v => v.identifier !== node.identifier);
-        variables.push({ identifier: node.identifier, value: node.value })
-        return { ...state, currentExpression: node.value, variables: variables };
-    }
-    if (node.type === "expression" && node.operator === "add-assign") {
-        if (node.value.type !== "constant") {
-            const newState = evaluate(root, node.value, state);
-            return { ...newState, currentExpression: addAssign(node.identifier, newState.value) };
-        }
-        const identifierValue = node.variables.find(v => v.identifier === node).value.value;
-        const valueValue = node.value.value;
-        const variables = node.variables.filter(v => v.identifier !== node.identifier);
-        variables.push({ identifier: node.identifier, value: intConstant(identifierValue + valueValue) });
-        return { ...state, currentExpression: intConstant(identifierValue + valueValue), variables: variables };
-    }
-    if (node.type === "expression" && node.operator === "increment") {
-        const identifierValue = node.variables.find(v => v.identifier === node).value.value;
-        const variables = node.variables.filter(v => v.identifier !== node.identifier);
-        variables.push({ identifier: node.identifier, value: intConstant(identifierValue) + 1 });
-        return { ...state, currentExpression: intConstant(identifierValue), variables: variables };
-    }
-    if (node.type === "expression" && node.operator === "invoke") {
-        // Calculate arguments
-        for(let i = 0; i < node.arguments.length; i++){
-            if(node.arguments[i].type !== "constant") {
-                const newState = evaluate(node.arguments[i], state);
-                const newArguments = [
-                    ...node.arguments.slice(0, i - 1),
-                    newState.currentExpression,
-                    ...node.arguments.slice(i + 1)
-                ];
-                return { ...newState, currentExpression: invoke(node.identifier, newArguments) }
-            }
-        }
 
-        if (node.identifier.name === "printf") {
-            const printValue = node.arguments[0].value;
-            if(node.arguments.length >= 1) printValue.replace("%d", node.arguments[1].value);
-
-            return {
-                ...state,
-                currentExpression: undefined,
-                stdout: state.stdout + printValue
-            }
-        }
-        throw new Error("Unsupported function " + node.identifier.name);
-    }
+    // Replaces statement
     if (node.type === "statement" && node.statementType === "expression") {
         const hasFinishedEvaluating = node.value === undefined || node.value.type === "constant";
 
