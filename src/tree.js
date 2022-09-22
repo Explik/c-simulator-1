@@ -19,7 +19,12 @@ function constant(value, datatype) {
 }
 
 function intConstant(value) {
-    return constant(value, "int");
+    if (typeof value === "boolean")
+        return intConstant(value ? 1 : 0);
+    if (typeof value === "number")
+        return constant(value, "int");
+
+    throw new Error("Unsupported value type " + typeof value);
 }
 
 function stringConstant(value) {
@@ -27,7 +32,7 @@ function stringConstant(value) {
 }
 
 function statement(expr) {
-    if (isExpression(expr)) throw new Error("expr is not an expression");
+    if (!isExpression(expr)) throw new Error("expr is not an expression");
 
     return {
         type: "statement",
@@ -42,8 +47,8 @@ function nullStatement() {
 
 function declaration(datatype, identifier, value) {
     if (typeof datatype !== "string") throw new Error("datatype is not a string");
-    if (isIdentifier(identifier)) throw new Error("identifier is not an identifier");
-    if (isExpression(value)) throw new Error("value is not an expression");
+    if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
+    if (!isExpression(value)) throw new Error("value is not an expression");
 
     return {
         type: "statement",
@@ -63,8 +68,8 @@ function stringDeclaration(identifier, value) {
 }
 
 function and(left, right) {
-    if (isExpression(left)) throw new Error("left is not an expression");
-    if (isExpression(right)) throw new Error("right is not an expression");
+    if (!isExpression(left)) throw new Error("left is not an expression");
+    if (!isExpression(right)) throw new Error("right is not an expression");
 
     return {
         type: "expression",
@@ -75,8 +80,8 @@ function and(left, right) {
 }
 
 function lessThanOrEqual(left, right) {
-    if (isExpression(left)) throw new Error("left is not an expression");
-    if (isExpression(right)) throw new Error("right is not an expression");
+    if (!isExpression(left)) throw new Error("left is not an expression");
+    if (!isExpression(right)) throw new Error("right is not an expression");
 
     return {
         type: "expression",
@@ -87,8 +92,8 @@ function lessThanOrEqual(left, right) {
 }
 
 function equal(left, right) {
-    if (isExpression(left)) throw new Error("left is not an expression");
-    if (isExpression(right)) throw new Error("right is not an expression");
+    if (!isExpression(left)) throw new Error("left is not an expression");
+    if (!isExpression(right)) throw new Error("right is not an expression");
 
     return {
         type: "expression",
@@ -99,8 +104,8 @@ function equal(left, right) {
 }
 
 function assign(identifier, value) {
-    if (isIdentifier(identifier)) throw new Error("identifier is not an identifier");
-    if (isExpression(value)) throw new Error("value is not an expression");
+    if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
+    if (!isExpression(value)) throw new Error("value is not an expression");
 
     return {
         type: "expression",
@@ -111,8 +116,8 @@ function assign(identifier, value) {
 }
 
 function addAssign(identifier, value) {
-    if (isIdentifier(identifier)) throw new Error("identifier is not an identifier");
-    if (isExpression(value)) throw new Error("value is not an expression");
+    if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
+    if (!isExpression(value)) throw new Error("value is not an expression");
 
     return {
         type: "expression",
@@ -123,7 +128,7 @@ function addAssign(identifier, value) {
 }
 
 function increment(identifier) {
-    if (isIdentifier(identifier)) throw new Error("identifier is not an identifier");
+    if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
 
     return {
         type: "expression",
