@@ -8,7 +8,7 @@ import {
     stringDeclaration,
     and,
     lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement,
-    iff, withLeft, withRight, withValue
+    iff, withLeft, withRight, withValue, withArgument
 } from "../src/tree";
 import {evaluate, evaluateExpression, initialState, mergeState, variable, withExpression} from "../src/evaluator";
 
@@ -217,6 +217,55 @@ describe('evaluator', () => {
                 const callback = () => { throw new Error("Invalid operation") };
 
                 const expectedState = initialState({expression: oldValue, variable: variable(name, newValue)});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+        });
+        describe('invoke printf()', () => {
+            it('should use callback on non-constant first argument', () => {
+                const name = identifier('printf');
+                const arg1 = identifier("arg1");
+                const arg2 = identifier("arg2");
+                const constant = stringConstant("\"%d\"");
+                const expression = invoke(name, arg1, arg2);
+                const state = initialState({expression});
+                const callback = () => mergeState(state, {expression: constant});
+
+                const expectedExpression = withArgument(expression, constant, 0);
+                const expectedState = initialState({expression: expectedExpression});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should use callback on non-constant second argument when first argument is constant', () => {
+                const name = identifier('printf');
+                const arg1 = stringConstant("%d");
+                const arg2 = identifier("arg2");
+                const constant = intConstant(5);
+                const expression = invoke(name, arg1, arg2);
+                const state = initialState({expression});
+                const callback = () => mergeState(state, {expression: constant});
+
+                const expectedExpression = withArgument(expression, constant, 1);
+                const expectedState = initialState({expression: expectedExpression});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should append stdout for string literals', () => {
+                const name = identifier('printf');
+                const arg = stringConstant("Hello world");
+                const expression = invoke(name, arg);
+                const state = initialState({expression});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = initialState({expression: undefined, stdout: "Hello world"});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should append stdout for %d', () => {
+                const name = identifier('printf');
+                const arg1 = stringConstant("%d");
+                const arg2 = intConstant(5);
+                const expression = invoke(name, arg1, arg2);
+                const state = initialState({expression});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = initialState({expression: undefined, stdout: "5"});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
         });

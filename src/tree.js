@@ -138,7 +138,7 @@ function increment(identifier) {
 }
 
 function invoke(identifier) {
-    if (isIdentifier(identifier)) throw new Error("identifier is not an identifier");
+    if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
 
     return {
         type: "expression",
@@ -337,7 +337,7 @@ function withRight(node, right) {
 }
 
 function withArgument(node, arg, position) {
-    if (!Array.isArray(arguments)) throw new Error("args is not an array");
+    if (!isExpression(arg)) throw new Error("arg is not an expression");
 
     const newArguments = [
         ...node.arguments.slice(0, position - 1),
@@ -350,7 +350,7 @@ function withArgument(node, arg, position) {
 }
 
 function withArguments(node, args) {
-    if (!Array.isArray(arguments)) throw new Error("args is not an array");
+    if (!Array.isArray(args)) throw new Error("args is not an array");
 
     if (isInvoke(node)) return invoke(node.identifier, args);
 

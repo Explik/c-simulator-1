@@ -70,7 +70,6 @@ function variable(identifier, constant) {
     return { identifier, value: constant };
 }
 
-
 function isVariable(variable) {
     return isIdentifier(variable.identifier) && isConstant(variable.value);
 }
@@ -105,7 +104,7 @@ function mergeState(state, stateChange) {
 
     // Absolute changes
     if (stateChange.root) newState.root = stateChange.root;
-    if (stateChange.expression) newState.expression = stateChange.expression;
+    if (stateChange.expression || stateChange.hasOwnProperty("expression")) newState.expression = stateChange.expression;
     if (stateChange.variables) newState.variables = stateChange.variables;
 
     // Relative changes 
@@ -117,7 +116,6 @@ function mergeState(state, stateChange) {
 
     return newState;
 }
-
 
 function hasVariable(state, identifier) {
     return state.variables.some(v => v.identifier === identifier);
@@ -288,13 +286,15 @@ function evaluateInvokeExpression(state, callback) {
     if (!isInvoke(state.expression))
         throw new Error("state.expression is not an invocation expression");
 
-    if (!areArgumentsConstant(state.expression))
+    if (!areArgumentsConstant(state))
         return evaluateArguments(state, callback);
 
     if (isInvoke(state.expression, "printf")) {
         const args = state.expression.arguments;
-        const printValue = args[0].value;
-        if(args.length >= 1) printValue.replace("%d", args[1].value);
+        let printValue = args[0].value;
+
+        if(args.length > 1)
+            printValue = printValue.replace("%d", args[1].value);
 
         return mergeState(state, {
             expression: undefined,
