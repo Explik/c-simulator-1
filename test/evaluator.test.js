@@ -8,153 +8,177 @@ import {
     stringDeclaration,
     and,
     lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement,
-    iff, withLeft, withRight
+    iff, withLeft, withRight, withValue
 } from "../src/tree";
-import {evaluate, evaluateExpression, initialState, withExpression} from "../src/evaluator";
+import {evaluate, evaluateExpression, initialState, variable, withExpression} from "../src/evaluator";
 
 describe('evaluator', () => {
     describe('evaluateExpression', () => {
         describe('and expression', () => {
             it('should use callback on non-constant left', () => {
                 const constant = intConstant(5);
-                const root = and(identifier('l'), identifier('r'));
-                const state = initialState(root);
+                const expression = and(identifier('l'), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => withExpression(state, constant);
 
-                const expectedRoot = withLeft(root, constant);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = withLeft(expression, constant);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should use callback on non-constant right when left is constant', () => {
                 const constant = intConstant(5);
-                const root = and(intConstant(2), identifier('r'));
-                const state = initialState(root);
+                const expression = and(intConstant(2), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => withExpression(state, constant);
 
-                const expectedRoot = withRight(root, constant);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = withRight(expression, constant);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 0 when left is 0', () => {
-                const root = and(intConstant(0), identifier('r'));
-                const state = initialState(root);
+                const expression = and(intConstant(0), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => {
                     throw new Error("Invalid operation")
                 };
 
-                const expectedRoot = intConstant(0);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(0);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 0 when left is 1 and right is 0', () => {
-                const root = and(intConstant(1), intConstant(0));
-                const state = initialState(root);
+                const expression = and(intConstant(1), intConstant(0));
+                const state = initialState({expression});
                 const callback = () => {
                     throw new Error("Invalid operation")
                 };
 
-                const expectedRoot = intConstant(0);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(0);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 1 when left is 1 and right is 1', () => {
-                const root = and(intConstant(1), intConstant(1));
-                const state = initialState(root);
+                const expression = and(intConstant(1), intConstant(1));
+                const state = initialState({expression});
                 const callback = () => {
                     throw new Error("Invalid operation")
                 };
 
-                const expectedRoot = intConstant(1);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(1);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
         });
         describe('less-than-or-equal expression', () => {
             it('should use callback on non-constant left', () => {
                 const constant = intConstant(5);
-                const root = lessThanOrEqual(identifier('l'), identifier('r'));
-                const state = initialState(root);
+                const expression = lessThanOrEqual(identifier('l'), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => withExpression(state, constant);
 
-                const expectedRoot = withLeft(root, constant);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = withLeft(expression, constant);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should use callback on non-constant right', () => {
                 const constant = intConstant(5);
-                const root = lessThanOrEqual(intConstant(2), identifier('r'));
-                const state = initialState(root);
+                const expression = lessThanOrEqual(intConstant(2), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => withExpression(state, constant);
 
-                const expectedRoot = withRight(root, constant);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = withRight(expression, constant);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 0 when left is larger than right', () => {
-                const root = lessThanOrEqual(intConstant(7), intConstant(6));
-                const state = initialState(root);
+                const expression = lessThanOrEqual(intConstant(7), intConstant(6));
+                const state = initialState({expression});
                 const callback = () => { throw new Error("Invalid operation") };
 
-                const expectedRoot = intConstant(0);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(0);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 0 when left is equal to right', () => {
-                const root = lessThanOrEqual(intConstant(6), intConstant(6));
-                const state = initialState(root);
+                const expression = lessThanOrEqual(intConstant(6), intConstant(6));
+                const state = initialState({expression});
                 const callback = () => { throw new Error("Invalid operation") };
 
-                const expectedRoot = intConstant(1);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(1);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 1 when left is smaller than right', () => {
-                const root = lessThanOrEqual(intConstant(6), intConstant(7));
-                const state = initialState(root);
+                const expression = lessThanOrEqual(intConstant(6), intConstant(7));
+                const state = initialState({expression});
                 const callback = () => { throw new Error("Invalid operation") };
 
-                const expectedRoot = intConstant(1);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(1);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
         });
         describe('equal expression', () => {
             it('should use callback on non-constant left', () => {
                 const constant = intConstant(5);
-                const root = equal(identifier('l'), identifier('r'));
-                const state = initialState(root);
+                const expression = equal(identifier('l'), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => withExpression(state, constant);
 
-                const expectedRoot = withLeft(root, constant);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = withLeft(expression, constant);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should use callback on non-constant right', () => {
                 const constant = intConstant(5);
-                const root = equal(intConstant(2), identifier('r'));
-                const state = initialState(root);
+                const expression = equal(intConstant(2), identifier('r'));
+                const state = initialState({expression});
                 const callback = () => withExpression(state, constant);
 
-                const expectedRoot = withRight(root, constant);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = withRight(expression, constant);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 0 when left is not equal to right', () => {
-                const root = equal(intConstant(2), intConstant(3));
-                const state = initialState(root);
+                const expression = equal(intConstant(2), intConstant(3));
+                const state = initialState({expression});
                 const callback = () => { throw new Error("Invalid operation") };
 
-                const expectedRoot = intConstant(0);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(0);
+                const expectedState = initialState({expression: expectedExpression});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should return 0 when left is equal right', () => {
-                const root = equal(intConstant(2), intConstant(2));
-                const state = initialState(root);
+                const expression = equal(intConstant(2), intConstant(2));
+                const state = initialState({expression});
                 const callback = () => { throw new Error("Invalid operation") };
 
-                const expectedRoot = intConstant(1);
-                const expectedState = initialState(expectedRoot);
+                const expectedExpression = intConstant(1);
+                const expectedState = initialState({expression: expectedExpression});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+        });
+        describe('assign operator', () => {
+            it('should use callback on non-constant value', () => {
+                const name = identifier('n');
+                const value = intConstant(5);
+                const expression = assign(name, identifier('v'));
+                const state = initialState({expression, variables: [variable(name, value)]});
+                const callback = () => withExpression(state, value);
+
+                const expectedExpression = withValue(expression, value);
+                const expectedState = initialState({expression: expectedExpression, variables: [variable(name, value)]});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should change variable value and return value', () => {
+                const name = identifier('n');
+                const value = intConstant(3);
+                const expression = assign(name, value);
+                const state = initialState({expression, variables: [variable(name, value)]});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const newValue = intConstant(4);
+                const expectedState = initialState({expression: newValue, variables: [variable(name, newValue)]});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
         });

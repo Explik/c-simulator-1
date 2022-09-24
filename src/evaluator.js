@@ -117,16 +117,26 @@ function withStatement(state, statement) {
  * @param {Object} expr
  * @returns {State}
  */
-function initialState(expr) {
+function initialState(state) {
     return {
-        expression: expr,
-        variables: [],
-        stdout: ""
+        root: state.root,
+        expression: state.expression || state.root,
+        variables: state.variables || [],
+        stdout: state.stdout || ""
     };
 }
 
+function variable(identifier, constant) {
+    if (!isIdentifier(identifier))
+        throw new Error("identifier is not an identifier expression");
+    if (!isConstant(constant))
+        throw new Error("constant is not an constant expression");
+
+    return { identifier, constant };
+}
+
 function hasVariable(state, identifier) {
-    return false;
+    return state.variables.some(v => v.identifier === identifier);
 }
 
 function isLeftConstant(state) {
@@ -230,10 +240,10 @@ function evaluateAssignExpression(state, callback) {
         throw new Error("state.expression is not an assign expression");
 
     if (!hasVariable(state, state.expression.identifier))
-        throw new Error("Identifier "+ state.expression.identifier.name + "has not been declared yet");
+        throw new Error("Identifier "+ state.expression.identifier.name + " has not been declared yet");
 
     if (!isValueConstant(state)) {
-        return evaluateValue(state);
+        return evaluateValue(state, callback);
     }
     return withExpressionAndVariable(state, state.expression.value, state.expression);
 }
@@ -411,4 +421,4 @@ function evaluate(root, node, state, callback) {
     }
 }
 
-export { evaluate, evaluateExpression, initialState, withExpression }
+export { evaluate, evaluateExpression, initialState, variable, withExpression }
