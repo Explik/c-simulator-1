@@ -10,7 +10,7 @@ import {
     lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement,
     iff, withLeft, withRight, withValue
 } from "../src/tree";
-import {evaluate, evaluateExpression, initialState, variable, withExpression} from "../src/evaluator";
+import {evaluate, evaluateExpression, initialState, mergeState, variable, withExpression} from "../src/evaluator";
 
 describe('evaluator', () => {
     describe('evaluateExpression', () => {
@@ -19,7 +19,7 @@ describe('evaluator', () => {
                 const constant = intConstant(5);
                 const expression = and(identifier('l'), identifier('r'));
                 const state = initialState({expression});
-                const callback = () => withExpression(state, constant);
+                const callback = () => mergeState(state, {expression: constant});
 
                 const expectedExpression = withLeft(expression, constant);
                 const expectedState = initialState({expression: expectedExpression});
@@ -29,7 +29,7 @@ describe('evaluator', () => {
                 const constant = intConstant(5);
                 const expression = and(intConstant(2), identifier('r'));
                 const state = initialState({expression});
-                const callback = () => withExpression(state, constant);
+                const callback = () => mergeState(state, {expression: constant});
 
                 const expectedExpression = withRight(expression, constant);
                 const expectedState = initialState({expression: expectedExpression});
@@ -74,7 +74,7 @@ describe('evaluator', () => {
                 const constant = intConstant(5);
                 const expression = lessThanOrEqual(identifier('l'), identifier('r'));
                 const state = initialState({expression});
-                const callback = () => withExpression(state, constant);
+                const callback = () => mergeState(state, {expression: constant});
 
                 const expectedExpression = withLeft(expression, constant);
                 const expectedState = initialState({expression: expectedExpression});
@@ -84,7 +84,7 @@ describe('evaluator', () => {
                 const constant = intConstant(5);
                 const expression = lessThanOrEqual(intConstant(2), identifier('r'));
                 const state = initialState({expression});
-                const callback = () => withExpression(state, constant);
+                const callback = () => mergeState(state, {expression: constant});
 
                 const expectedExpression = withRight(expression, constant);
                 const expectedState = initialState({expression: expectedExpression});
@@ -123,7 +123,7 @@ describe('evaluator', () => {
                 const constant = intConstant(5);
                 const expression = equal(identifier('l'), identifier('r'));
                 const state = initialState({expression});
-                const callback = () => withExpression(state, constant);
+                const callback = () => mergeState(state, {expression: constant});
 
                 const expectedExpression = withLeft(expression, constant);
                 const expectedState = initialState({expression: expectedExpression});
@@ -133,7 +133,7 @@ describe('evaluator', () => {
                 const constant = intConstant(5);
                 const expression = equal(intConstant(2), identifier('r'));
                 const state = initialState({expression});
-                const callback = () => withExpression(state, constant);
+                const callback = () => mergeState(state, {expression: constant});
 
                 const expectedExpression = withRight(expression, constant);
                 const expectedState = initialState({expression: expectedExpression});
@@ -163,22 +163,60 @@ describe('evaluator', () => {
                 const name = identifier('n');
                 const value = intConstant(5);
                 const expression = assign(name, identifier('v'));
-                const state = initialState({expression, variables: [variable(name, value)]});
-                const callback = () => withExpression(state, value);
+                const state = initialState({expression, variable: variable(name, value)});
+                const callback = () => mergeState(state, {expression: value});
 
                 const expectedExpression = withValue(expression, value);
-                const expectedState = initialState({expression: expectedExpression, variables: [variable(name, value)]});
+                const expectedState = initialState({expression: expectedExpression, variable: variable(name, value)});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
             it('should change variable value and return value', () => {
                 const name = identifier('n');
-                const value = intConstant(3);
-                const expression = assign(name, value);
-                const state = initialState({expression, variables: [variable(name, value)]});
+                const oldValue = intConstant(3);
+                const newValue = intConstant(4);
+                const expression = assign(name, newValue);
+                const state = initialState({expression, variable: variable(name, oldValue)});
                 const callback = () => { throw new Error("Invalid operation") };
 
+                const expectedState = initialState({expression: newValue, variable: variable(name, newValue)});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+        });
+        describe('add-assign operator', () => {
+            it('should use callback on non-constant value', () => {
+                const name = identifier('n');
+                const value = intConstant(2);
+                const expression = addAssign(name, identifier('v'));
+                const state = initialState({expression, variables: [variable(name, value)]});
+                const callback = () => mergeState(state, {expression: value});
+
+                const expectedExpression = withValue(expression, value);
+                const expectedState = initialState({expression: expectedExpression, variable: variable(name, value)});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should change variable value and return added value', () => {
+                const name = identifier('n');
+                const oldValue = intConstant(3);
+                const exprValue = intConstant(4);
+                const addValue = intConstant(7);
+                const expression = addAssign(name, exprValue);
+                const state = initialState({expression, variable: variable(name, oldValue)});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = initialState({expression: addValue, variable: variable(name, addValue)});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+        });
+        describe('increment operator', () => {
+            it('should increment variable value and return original value', () => {
+                const name = identifier('n');
+                const oldValue = intConstant(3);
                 const newValue = intConstant(4);
-                const expectedState = initialState({expression: newValue, variables: [variable(name, newValue)]});
+                const expression = increment(name);
+                const state = initialState({expression, variable: variable(name, oldValue)});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = initialState({expression: oldValue, variable: variable(name, newValue)});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
         });

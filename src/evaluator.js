@@ -32,7 +32,7 @@ import {
     withArgument,
     isLessThanOrEqual, isFalse
 } from "./tree";
-import {call} from "ramda";
+import {call, mergeWithKey} from "ramda";
 
 /** @typedef {Object} State
  *  @property {Object} expression
@@ -40,90 +40,25 @@ import {call} from "ramda";
  *  @property {string} stdout
  */
 
+/** @typedef {Object} StateChange
+ *  @property {Object?} root
+ *  @property {Object?} expression
+ *  @property {Object[]?} variables
+ *  @property {Object?} variable
+ *  @property {string?} stdout
+ */
+
+/**
+ *
+ * @param {State} state
+ * @param identifier
+ * @returns {*}
+ */
 function getValue(state, identifier) {
-    if (state.variables.some(v => v.identifier === identifier)) throw new Error("Variable is not yet declared");
-    return state.variables.find(v => v.identifier === identifier).value;
-}
-
-function isVariable(variable) {
-    return isIdentifier(variable.identifier) && isConstant(variable.value);
-}
-
-/**
- *
- * @param {State} state
- * @param expr
- * @returns {State}
- */
-function withExpression(state, expr) {
-    if (!isExpression(expr)) throw new Error("expr is not an expression");
-    return { ...state, expression: expr };
-}
-
-/**
- *
- * @param {State} state
- * @param expr
- * @param variable
- * @returns {State}
- */
-function withExpressionAndVariable(state, expr, variable) {
-    if (!isExpression(expr)) throw new Error("expr is not an expression");
-    if (!isVariable(variable)) throw new Error("variable is not an variable");
-    const variables = [...state.variables.filter(v => v.identifier !== variable.identifier), variable.identifier];
-    return { ...state, expression: expr, variables: variables };
-}
-
-/**
- *
- * @param {State} state
- * @param expr
- * @param variables
- * @returns {State}
- */
-function withExpressionAndVariables(state, expr, variables) {
-    if (!isExpression(expr)) throw new Error("expr is not an expression");
-    if (variables.some(v => !isVariable(v))) throw new Error("variables contains non-variable");
-    return { ...state, expression: expr, variables: variables };
-}
-
-/**
- *
- * @param {State} state
- * @param expr
- * @param output
- * @returns {State}
- */
-function withExpressionAndStdout(state, expr, output) {
-    if (!isExpression(expr)) throw new Error("expr is not an expression");
-    if (typeof output !== "string") throw new Error("output is not a string");
-    const stdout = state.stdout + output;
-    return { ...state, expression: expr, stdout: stdout };
-}
-
-/**
- *
- * @param {State} state
- * @param statement
- * @returns {State}
- */
-function withStatement(state, statement) {
-    if (!isStatement(statement)) throw new Error("statement is not a statement");
-    return { ...state, currentStatement: statement };
-}
-
-/**
- *
- * @param {Object} expr
- * @returns {State}
- */
-function initialState(state) {
-    return {
-        root: state.root,
-        expression: state.expression || state.root,
-        variables: state.variables || [],
-        stdout: state.stdout || ""
-    };
+    if (!state.variables.some(v => v.identifier === identifier)) throw new Error("Variable is not yet declared");
+    const value = state.variables.find(v => v.identifier === identifier).value;
+    if (!value) throw new Error("Variable has no value");
+    return value;
 }
 
 function variable(identifier, constant) {
@@ -132,8 +67,57 @@ function variable(identifier, constant) {
     if (!isConstant(constant))
         throw new Error("constant is not an constant expression");
 
-    return { identifier, constant };
+    return { identifier, value: constant };
 }
+
+
+function isVariable(variable) {
+    return isIdentifier(variable.identifier) && isConstant(variable.value);
+}
+
+/**
+ *
+ * @param {StateChange} state
+ * @returns {State}
+ */
+function initialState(state) {
+    const baseState = {
+        stdout: "",
+        variables: []
+    }
+    return mergeState(baseState, state);
+}
+
+/**
+ *
+ * @param {State} state
+ * @param {StateChange} stateChange
+ */
+function mergeState(state, stateChange) {
+    if (stateChange.expression && !isExpression(stateChange.expression))
+        throw new Error("stateChange.expression is not an expression");
+    if (stateChange.variables && stateChange.variables.some(v => !isVariable(v)))
+        throw new Error("stateChange.variables contains non-variable");
+    if (stateChange.variable && !isVariable(stateChange.variable))
+        throw new Error("stateChange.variable is not a variable");
+
+    const newState = {...state};
+
+    // Absolute changes
+    if (stateChange.root) newState.root = stateChange.root;
+    if (stateChange.expression) newState.expression = stateChange.expression;
+    if (stateChange.variables) newState.variables = stateChange.variables;
+
+    // Relative changes 
+    if (stateChange.variable) {
+        const filteredVariables = state.variables.filter(v => v.identifier !== stateChange.variable.identifier);
+        newState.variables = [...filteredVariables, stateChange.variable]
+    } 
+    if (stateChange.stdout) newState.stdout += stateChange.stdout;
+
+    return newState;
+}
+
 
 function hasVariable(state, identifier) {
     return state.variables.some(v => v.identifier === identifier);
@@ -160,7 +144,9 @@ function evaluateLeft(state, callback) {
         throw new Error("state.expression has no left argument");
 
     const {expression, variables} = callback(state.expression.left);
-    return withExpressionAndVariables(state, withLeft(state.expression, expression), variables);
+    return mergeState(state, {
+        expression: withLeft(state.expression, expression), variables
+    });
 }
 
 function evaluateRight(state, callback) {
@@ -168,7 +154,9 @@ function evaluateRight(state, callback) {
         throw new Error("state.expression has no right argument");
 
     const {expression, variables} = callback(state.expression.right);
-    return withExpressionAndVariables(state, withRight(state.expression, expression), variables);
+    return mergeState(state, {
+        expression: withRight(state.expression, expression), variables
+    });
 }
 
 function evaluateValue(state, callback) {
@@ -176,7 +164,9 @@ function evaluateValue(state, callback) {
         throw new Error("state.expression has no value argument");
 
     const {expression, variables} = callback(state.expression.value);
-    return withExpressionAndVariables(state, withValue(state.expression, expression), variables);
+    return mergeState(state, {
+        expression: withValue(state.expression, expression), variables
+    });
 }
 
 function evaluateArguments(state, callback) {
@@ -190,7 +180,9 @@ function evaluateArguments(state, callback) {
         throw new Error("state.expression.arguments does not contain non-constant")
 
     const {expression, variables} = callback(args[argIndex]);
-    return withExpressionAndVariables(state, withArgument(state.expression, expression, argIndex), variables);
+    return mergeState(state, {
+        expression:withArgument(state.expression, expression, argIndex), variables
+    });
 }
 
 function evaluateAndExpression(state, callback) {
@@ -201,12 +193,16 @@ function evaluateAndExpression(state, callback) {
         return evaluateLeft(state, callback);
     }
     if (isFalse(state.expression.left)) {
-        return withExpression(state, intConstant(0));
+        return mergeState(state, {
+            expression: intConstant(false)
+        });
     }
     if (!isRightConstant(state)) {
         return evaluateRight(state, callback);
     }
-    return withExpression(state, intConstant(isTrue(state.expression.right)));
+    return mergeState(state, {
+        expression: intConstant(isTrue(state.expression.right))
+    });
 }
 
 function evaluateLessThanOrEqualExpression(state, callback) {
@@ -219,7 +215,9 @@ function evaluateLessThanOrEqualExpression(state, callback) {
     if (!isRightConstant(state)) {
         return evaluateRight(state, callback);
     }
-    return withExpression(state, intConstant(numericalValue(state.expression.left) <= numericalValue(state.expression.right)));
+    return mergeState(state, {
+        expression: intConstant(numericalValue(state.expression.left) <= numericalValue(state.expression.right))
+    });
 }
 
 function evaluateEqualExpression(state, callback) {
@@ -232,7 +230,9 @@ function evaluateEqualExpression(state, callback) {
     if (!isRightConstant(state)) {
         return evaluateRight(state, callback);
     }
-    return withExpression(state, intConstant(numericalValue(state.expression.left) === numericalValue(state.expression.right)));
+    return mergeState(state, {
+        expression: intConstant(numericalValue(state.expression.left) === numericalValue(state.expression.right))
+    });
 }
 
 function evaluateAssignExpression(state, callback) {
@@ -245,19 +245,25 @@ function evaluateAssignExpression(state, callback) {
     if (!isValueConstant(state)) {
         return evaluateValue(state, callback);
     }
-    return withExpressionAndVariable(state, state.expression.value, state.expression);
+    return mergeState(state, {
+        expression:  state.expression.value,
+        variable: variable(state.expression.identifier, state.expression.value)
+    });
 }
 
 function evaluateIncrementExpression(state, callback) {
-    if (!isAssign(state.expression))
+    if (!isIncrement(state.expression))
         throw new Error("state.expression is not an increment expression");
 
     if (!hasVariable(state, state.expression.identifier))
         throw new Error("Identifier "+ state.expression.identifier.name + "has not been declared yet");
 
-    const expression = intConstant(numericalValue(state.expression.identifier));
-    const variable = intConstant(numericalValue(getValue(state.expression.identifier)) + 1);
-    return withExpressionAndVariable(state, expression, variable);
+    const originalInt = numericalValue(getValue(state, state.expression.identifier));
+    const incrementedInt = originalInt + 1;
+    return mergeState(state, {
+        expression:  intConstant(originalInt),
+        variable: variable(state.expression.identifier, intConstant(incrementedInt))
+    });
 }
 
 function evaluateAddAssignExpression(state, callback) {
@@ -270,8 +276,12 @@ function evaluateAddAssignExpression(state, callback) {
     if (!isValueConstant(state))
         return evaluateValue(state, callback);
 
-    const expression = intConstant(numericalValue(getValue(state.expression.identifier)) + numericalValue(state.expression.right))
-    return withExpressionAndVariable(state, expression, expression);
+    const originalInt = numericalValue(getValue(state, state.expression.identifier));
+    const addedInt = originalInt + numericalValue(state.expression.value)
+    return mergeState(state, {
+        expression:  intConstant(addedInt),
+        variable: variable(state.expression.identifier, intConstant(addedInt))
+    });
 }
 
 function evaluateInvokeExpression(state, callback) {
@@ -286,7 +296,10 @@ function evaluateInvokeExpression(state, callback) {
         const printValue = args[0].value;
         if(args.length >= 1) printValue.replace("%d", args[1].value);
 
-        return withExpressionAndStdout(state, undefined, printValue);
+        return mergeState(state, {
+            expression: undefined,
+            stdout: printValue
+        });
     }
     throw new Error("Unsupported function");
 }
@@ -421,4 +434,4 @@ function evaluate(root, node, state, callback) {
     }
 }
 
-export { evaluate, evaluateExpression, initialState, variable, withExpression }
+export { evaluate, evaluateExpression, initialState, mergeState, variable }
