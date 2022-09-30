@@ -253,6 +253,10 @@ function isInvoke(node, name) {
     return node.type === "expression" && node.operator === "invoke";
 }
 
+function isExpressionStatement(node) {
+    return node.type === "statement" && node.statementType === "expression";
+}
+
 function isForLoop(node) {
     return node.type === "statement" && node.statementType === "for-loop";
 }
@@ -523,6 +527,7 @@ export {
     isFalse,
     isTrue,
     isBinary,
+    isExpressionStatement,
     hasLeft,
     hasRight,
     hasValue,

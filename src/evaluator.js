@@ -30,9 +30,15 @@ import {
     isInvoke,
     withArguments,
     withArgument,
-    isLessThanOrEqual, isFalse
+    isLessThanOrEqual,
+    isFalse,
+    isIff,
+    isExpressionStatement,
+    isDeclaration,
+    isForLoop,
+    isBlock
 } from "./tree";
-import {call, mergeWithKey} from "ramda";
+import {call, find, mergeWithKey} from "ramda";
 
 /** @typedef {Object} State
  *  @property {Object} expression
@@ -41,7 +47,7 @@ import {call, mergeWithKey} from "ramda";
  */
 
 /** @typedef {Object} StateChange
- *  @property {Object?} root
+ *  @property {Object[]?} root
  *  @property {Object?} expression
  *  @property {Object[]?} variables
  *  @property {Object?} variable
@@ -93,6 +99,10 @@ function initialState(state) {
  * @param {StateChange} stateChange
  */
 function mergeState(state, stateChange) {
+    if (stateChange.root && !Array.isArray(stateChange.root))
+        throw new Error("stateChange.expression is not an array");
+    if (stateChange.root && stateChange.root.some(v => !isStatement(v)))
+        throw new Error("stateChange.variables contains non-statement");
     if (stateChange.expression && !isExpression(stateChange.expression))
         throw new Error("stateChange.expression is not an expression");
     if (stateChange.variables && stateChange.variables.some(v => !isVariable(v)))
@@ -326,39 +336,61 @@ function evaluateExpressionRecursively(state) {
     return evaluateExpression(state, evaluateExpressionRecursively);
 }
 
-function findNextStatement(root, node, state) {
-    const allStatements = flatten(root).filter(n => n.type !== "statement");
-    const currentIndex = allStatements.indexOf(n => n === node);
-    const parentIndex = currentIndex - 1;
-    const parentNode = allStatements[parentIndex];
-
-    if (node.statementType === "if") {
-        if (state.currentExpression.condition !== "constant")
-            throw new Error("Condition in if statement is not calculated");
-
-        const isTrue = state.currentExpression.value.value !== 0;
-        return isTrue ? node.body : findNextStatement(parentNode);
+function findNextStatement(state) {
+    // Attempts to find statement in root
+    const indexInRoot = state.root.find(s => s === state.statement);
+    if(indexInRoot !== -1) {
+        const isLastInRoot = indexInRoot === state.root.length - 1;
+        return !isLastInRoot ? state.root[indexInRoot + 1] : undefined;
     }
+
+    // Attempts to find statement in block, outer block, outer block, etc.
+    const statements = state.root.flatMap(flatten);
+    const indexInStatements = statements.findIndex(s => s === state.statement);
+    if (indexInStatements !== -1) throw new Error("Statement is not located in root tree");
+
+    const priorStatements = statements.slice(0, indexInStatements - 1);
+    const priorBlocks = priorStatements.filter(isBlock);
+
+    for(let i = priorBlocks.length - 1; i > 0; i++) {
+        const blockStatements = flatten(priorBlocks[i]).filter(s => !isBlock(s));
+        const indexInBlock = blockStatements.findIndex(s => s === state.statement);
+
+        if (indexInBlock !== -1 && indexInBlock !== blockStatements.length - 1) {
+            return blockStatements[indexInBlock + 1];
+        }
+    }
+    return undefined;
+}
+
+function evaluateExpressionStatement(state, expressionCallback) {
+    if (!isConstant(state.expression))
+        return expressionCallback(state.expression);
+
+    return findNextStatement(state);
+}
+
+function evaluateDeclarationStatement(state, expressionCallback) {
+    if(!isConstant(state.expression.value))
+        return expressionCallback(state.expression.value);
+
+    return findNextStatement(state);
+}
+
+function evaluateIfStatement(state, expressionCallback) {
+    if(!isConstant(state.expression.condition))
+        return expressionCallback(state.expression.value);
+    if (!isTrue(state.expression.condition))
+        return expressionCallback(state.expression.body);
+
+    return findNextStatement(state);
+}
+
+function evaluateForLoopStatement(state, expressionCallback) {
     if (node.statementType === "for-loop") {
         return node.initializer;
     }
 
-    if (parentNode === undefined) {
-        return undefined;
-    }
-    if(parentNode.statementType === "block") {
-        const allStatementsInBlock = flatten(parentNode).filter(n => n.type !== "statements");
-        const currentIndexInBlock = allStatementsInBlock.indexOf(n => n === node);
-        const isLastStatementInBlock = currentIndexInBlock === (allStatementsInBlock.length - 1);
-
-        if (!isLastStatementInBlock) {
-            return allStatementsInBlock[currentIndexInBlock + 1];
-        }
-        else return findNextStatement(parentNode);
-    }
-    if(parentNode.statementType === "if") {
-        return findNextStatement(parentNode);
-    }
     if(parentNode.statementType === "for") {
         if (node === parentNode.initializer){
             return parentNode.condition;
@@ -375,10 +407,17 @@ function findNextStatement(root, node, state) {
         }
         throw new Error("Logic error");
     }
+}
 
-    if (currentIndex === allStatements.length - 1) {
+function evaluateStatement(state, expressionCallback) {
+    if (isExpressionStatement(state.statement))
+        return evaluateExpressionStatement(state, expressionCallback);
+    if (isDeclaration(state.statement))
+        return evaluateDeclarationStatement(state, expressionCallback);
+    if (isIff(state.statement))
+        return evaluateIfStatement(state, expressionCallback);
+    if (isForLoop(state.statement))
         return undefined;
-    }
 }
 
 
@@ -434,4 +473,4 @@ function evaluate(root, node, state, callback) {
     }
 }
 
-export { evaluate, evaluateExpression, initialState, mergeState, variable }
+export { evaluate, evaluateExpression, findNextStatement, initialState, mergeState, variable }
