@@ -279,7 +279,7 @@ describe('evaluator', () => {
     });
 
     describe('findNextStatement', () => {
-        describe('should return next statement in root from root', () => {
+        it('should return next statement in root from root', () => {
             const statement1 = statement(identifier('a'));
             const statement2 = statement(identifier('b'));
             const root = [statement1, statement2];
@@ -287,7 +287,7 @@ describe('evaluator', () => {
 
             assert.deepEqual(findNextStatement(state), statement2);
         });
-        describe('should return next statement in root from single block', () => {
+        it('should return next statement in root from single block', () => {
             const statement1 = block(statement(identifier('a')));
             const statement2 = statement(identifier('b'));
             const root = [statement1, statement2];
@@ -295,7 +295,7 @@ describe('evaluator', () => {
 
             assert.deepEqual(findNextStatement(state), statement2);
         });
-        describe('should return next statement in root from multiple block', () => {
+        it('should return next statement in root from multiple block', () => {
             const statement1 = block(block(statement(identifier('a'))));
             const statement2 = statement(identifier('b'));
             const root = [statement1, statement2];
@@ -303,7 +303,7 @@ describe('evaluator', () => {
 
             assert.deepEqual(findNextStatement(state), statement2);
         });
-        describe('should return next statement in root from multiple block 2', () => {
+        it('should return next statement in root from multiple block 2', () => {
             const statement1a = statement(identifier('a'));
             const statement1b = statement(identifier('b'));
             const statement1 = block(block(statement1a, block(statement1b)));
@@ -313,7 +313,7 @@ describe('evaluator', () => {
 
             assert.deepEqual(findNextStatement(state), statement2);
         });
-        describe('should return next statement in single block from root', () => {
+        it('should return next statement in single block from root', () => {
             const statement1 = statement(identifier('a'));
             const statement2 = block(statement(identifier('b')));
             const root = [statement1, statement2];
@@ -321,7 +321,7 @@ describe('evaluator', () => {
 
             assert.deepEqual(findNextStatement(state), statement2);
         });
-        describe('should return next statement in multiple block from root', () => {
+        it('should return next statement in multiple block from root', () => {
             const statement1 = statement(identifier('a'));
             const statement2 = block(statement(identifier('b')));
             const root = [statement1, statement2];
@@ -398,98 +398,6 @@ describe('evaluator', () => {
                 const expectedState = mergeState(state, {statement: undefined, expression: undefined});
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
-        });
-    });
-
-    describe('zzz', () => {
-        it('should evaluate constant statement (step 1)', () => {
-            const constantNode1 = intConstant(0);
-            const constantNode2 = intConstant(1);
-            const andNode = and(constantNode1, constantNode2);
-            const statementNode = statement(andNode);
-
-            const expectedState = {
-                variables: [],
-                stdout: "",
-                currentStatement: statementNode,
-                currentExpression: statement(intConstant(0)),
-            };
-            assert.deepEqual(evaluate(statementNode), expectedState);
-        });
-
-        it('should evaluate constant statement (step 2)', () => {
-            const constantNode1 = intConstant(0);
-            const constantNode2 = intConstant(1);
-            const andNode = and(constantNode1, constantNode2);
-            const statementNode = statement(andNode);
-
-            const initialState = {
-                variables: [],
-                stdout: "",
-                currentStatement: statementNode,
-                currentExpression: statement(intConstant(0)),
-            };
-
-            const expectedState = {
-                variables: [],
-                stdout: "",
-                currentStatement: undefined,
-                currentExpression: undefined
-            };
-            assert.deepEqual(evaluate(statementNode, initialState), expectedState);
-        });
-
-        it('should evaluate constant declaration', () => {
-            const identifierNode = identifier("name");
-            const constantNode = intConstant(5);
-            const declarationNode = intDeclaration(identifierNode, constantNode);
-
-            const expectedState = {
-                variables: [
-                    {identifier: identifierNode, value: constantNode}
-                ],
-                currentExpression: undefined,
-                currentStatement: undefined
-            };
-            assert.deepEqual(evaluate(declarationNode), expectedState);
-        });
-
-        it('should evaluate calculated declaration (step 1)', () => {
-            const identifierNode = identifier("name");
-            const constantNode1 = intConstant(0);
-            const constantNode2 = intConstant(1);
-            const andNode = and(constantNode1, constantNode2);
-            const declarationNode = intDeclaration(identifierNode, andNode);
-
-            const expectedState = {
-                variables: [],
-                currentExpression: intDeclaration(identifierNode, intConstant(0)),
-                currentStatement: declarationNode
-            };
-            assert.deepEqual(evaluate(declarationNode), expectedState);
-        });
-
-        it('should evaluate calculated declaration (step 2)', () => {
-            const identifierNode = identifier("name");
-            const constantNode1 = intConstant(0);
-            const constantNode2 = intConstant(1);
-            const andNode = and(constantNode1, constantNode2);
-            const declarationNode = intDeclaration(identifierNode, andNode);
-
-            const initialState = {
-                variables: [],
-                currentExpression: intDeclaration(identifierNode, intConstant(0)),
-                currentStatement: declarationNode
-            };
-
-            const expectedState = {
-                variables: [
-                    {identifier: identifierNode, value: intConstant(0)}
-                ],
-                currentExpression: undefined,
-                currentStatement: undefined
-            };
-            assert.deepEqual(evaluate(declarationNode, initialState), expectedState);
         });
     });
 });

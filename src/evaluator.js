@@ -114,6 +114,7 @@ function mergeState(state, stateChange) {
 
     // Absolute changes
     if (stateChange.root) newState.root = stateChange.root;
+    if (stateChange.statement || stateChange.hasOwnProperty("expression")) newState.statement = stateChange.statement;
     if (stateChange.expression || stateChange.hasOwnProperty("expression")) newState.expression = stateChange.expression;
     if (stateChange.variables) newState.variables = stateChange.variables;
 
@@ -338,7 +339,7 @@ function evaluateExpressionRecursively(state) {
 
 function findNextStatement(state) {
     // Attempts to find statement in root
-    const indexInRoot = state.root.find(s => s === state.statement);
+    const indexInRoot = state.root.findIndex(s => s === state.statement);
     if(indexInRoot !== -1) {
         const isLastInRoot = indexInRoot === state.root.length - 1;
         return !isLastInRoot ? state.root[indexInRoot + 1] : undefined;
