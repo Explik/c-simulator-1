@@ -1,4 +1,6 @@
 // Tree components
+import {stat} from "@babel/core/lib/gensync-utils/fs";
+
 function identifier(name) {
     if (typeof name !== "string") throw new Error("name is not a string");
 
@@ -42,7 +44,11 @@ function statement(expr) {
 }
 
 function nullStatement() {
-    return statement();
+    return {
+        type: "statement",
+        statementType: "expression",
+        value: undefined
+    };
 }
 
 function declaration(datatype, identifier, value) {
@@ -165,8 +171,8 @@ function forLoop(initializer, condition, update, body) {
 }
 
 function iff(condition, body) {
-    if (isExpression(condition)) throw new Error("condition is not an expression");
-    if (isStatement(body)) throw new Error("initializer is not a statement");
+    if (!isExpression(condition)) throw new Error("condition is not an expression");
+    if (!isStatement(body)) throw new Error("initializer is not a statement");
 
     return {
         type: "statement",
@@ -361,6 +367,14 @@ function withArguments(node, args) {
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
+export function withExpression(node, expr) {
+    if (!isExpression(expr)) throw new Error("arg is not an expression");
+
+    if(isExpressionStatement(node)) return statement(expr);
+
+    throw new Error("Unsupported node " + JSON.stringify(node));
+}
+
 function withInitializer(node, initializer) {
     if (isForLoop(node)) return forLoop(initializer, node.condition, node.update, node.body);
     throw new Error("Unsupported node " + JSON.stringify(node));
@@ -418,7 +432,7 @@ function flatten(node) {
         if (node.statementType === "block") {
             return [
                 node,
-                ...node.statements.map(flatten).flat()
+                ...node.statements.flatMap(flatten)
             ];
         }
         if (node.statementType === "declaration") {

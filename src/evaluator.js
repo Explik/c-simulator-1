@@ -103,8 +103,8 @@ function mergeState(state, stateChange) {
         throw new Error("stateChange.expression is not an array");
     if (stateChange.root && stateChange.root.some(v => !isStatement(v)))
         throw new Error("stateChange.variables contains non-statement");
-    if (stateChange.expression && !isExpression(stateChange.expression))
-        throw new Error("stateChange.expression is not an expression");
+    if (stateChange.expression && !(isExpression(stateChange.expression) || isStatement(stateChange.expression)))
+        throw new Error("stateChange.expression is not an expression or statement");
     if (stateChange.variables && stateChange.variables.some(v => !isVariable(v)))
         throw new Error("stateChange.variables contains non-variable");
     if (stateChange.variable && !isVariable(stateChange.variable))
@@ -114,7 +114,7 @@ function mergeState(state, stateChange) {
 
     // Absolute changes
     if (stateChange.root) newState.root = stateChange.root;
-    if (stateChange.statement || stateChange.hasOwnProperty("expression")) newState.statement = stateChange.statement;
+    if (stateChange.statement || stateChange.hasOwnProperty("statement")) newState.statement = stateChange.statement;
     if (stateChange.expression || stateChange.hasOwnProperty("expression")) newState.expression = stateChange.expression;
     if (stateChange.variables) newState.variables = stateChange.variables;
 
@@ -365,26 +365,35 @@ function findNextStatement(state) {
 }
 
 function evaluateExpressionStatement(state, expressionCallback) {
-    if (!isConstant(state.expression))
+    if (!isConstant(state.expression.value))
         return expressionCallback(state.expression);
 
-    return findNextStatement(state);
+    const nextStatement = findNextStatement(state);
+    return mergeState(state, {statement: nextStatement, expression: nextStatement});
 }
 
 function evaluateDeclarationStatement(state, expressionCallback) {
     if(!isConstant(state.expression.value))
         return expressionCallback(state.expression.value);
 
-    return findNextStatement(state);
+    const nextStatement = findNextStatement(state);
+    return mergeState(state, {statement: nextStatement, expression: nextStatement});
 }
 
 function evaluateIfStatement(state, expressionCallback) {
     if(!isConstant(state.expression.condition))
         return expressionCallback(state.expression.value);
-    if (!isTrue(state.expression.condition))
-        return expressionCallback(state.expression.body);
 
-    return findNextStatement(state);
+    if (isTrue(state.expression.condition)) {
+        if (!isBlock((state.expression.body)))
+            return mergeState(state, {statement: state.expression.body, expression: state.expression.body});
+
+        const nextBodyStatements = flatten(state.expression.body).filter(s => !isBlock(s));
+        if (nextBodyStatements.length > 0) return mergeState(state, {statement: nextBodyStatements[0], expression: nextBodyStatements[0]});
+    }
+
+    const nextStatement = findNextStatement(state);
+    return mergeState(state, {statement: nextStatement, expression: nextStatement});
 }
 
 function evaluateForLoopStatement(state, expressionCallback) {
@@ -474,4 +483,4 @@ function evaluate(root, node, state, callback) {
     }
 }
 
-export { evaluate, evaluateExpression, findNextStatement, initialState, mergeState, variable }
+export { evaluate, evaluateExpression, evaluateStatement, findNextStatement, initialState, mergeState, variable }
