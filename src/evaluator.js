@@ -337,40 +337,103 @@ function evaluateExpressionRecursively(state) {
     return evaluateExpression(state, evaluateExpressionRecursively);
 }
 
-function findNextStatementInner(state) {
-    // Attempts to find statement in root
-    const indexInRoot = state.root.findIndex(s => s === state.statement);
-    if(indexInRoot !== -1) {
-        const isLastInRoot = indexInRoot === state.root.length - 1;
-        return !isLastInRoot ? state.root[indexInRoot + 1] : undefined;
-    }
-
-    // Attempts to find statement in block, outer block, outer block, etc.
-    const statements = state.root.flatMap(flatten);
-    const indexInStatements = statements.findIndex(s => s === state.statement);
-    if (indexInStatements !== -1) throw new Error("Statement is not located in root tree");
-
-    const priorStatements = statements.slice(0, indexInStatements - 1);
-    const priorBlocks = priorStatements.filter(isBlock);
-
-    for(let i = priorBlocks.length - 1; i > 0; i++) {
-        const blockStatements = flatten(priorBlocks[i]).filter(s => !isBlock(s));
-        const indexInBlock = blockStatements.findIndex(s => s === state.statement);
-
-        if (indexInBlock !== -1 && indexInBlock !== blockStatements.length - 1) {
-            return blockStatements[indexInBlock + 1];
-        }
-    }
-    return undefined;
+function isCompositeStatement(statement) {
+    return isBlock(statement) || isForLoop(statement);
 }
 
-function findNextStatement(state) {
-    const nextStatement = findNextStatementInner(state);
+function findParentStatement(root, statement) {
+    //console.log(root);
 
-    if (isForLoop(nextStatement))
-        return nextStatement.initializer;
+    if (!Array.isArray(root))
+        throw new Error("Root is not an array");
 
-    return nextStatement;
+    // Verifies that statement has parent
+    const indexInRoot = root.findIndex(s => s === statement);
+    if(indexInRoot !== -1) {
+        return undefined;
+    }
+
+    // Attempts to find parent
+    const statements = root.flatMap(flatten);
+    //console.log(statements);
+    //console.log(statement);
+    //console.log(statements);
+    const indexInStatements = statements.findIndex(s => s === statement);
+    //console.log("indexOfStatements: "+indexInStatements);
+    if (indexInStatements === -1) throw new Error("Statement is not located in root tree");
+
+    const priorStatements = statements.slice(0, indexInStatements);
+    //console.log(priorStatements);
+    const priorCompositeStatements = priorStatements.filter(s => isIff(s) || isBlock(s) || isForLoop(s));
+    //console.log(priorCompositeStatements);
+
+    for(let i = priorCompositeStatements.length - 1; i >= 0; i--) {
+        const compositeStatement = priorCompositeStatements[i];
+        //console.log(compositeStatement);
+
+        //if (isBlock(compositeStatement)) console.log(compositeStatement.statements);
+
+        if (isIff(compositeStatement) && compositeStatement.body === statement)
+            return compositeStatement;
+        if (isBlock(compositeStatement) && compositeStatement.statements.some(s => s === statement))
+            return compositeStatement;
+        if (isForLoop(compositeStatement)) {
+            if (compositeStatement.initializer === statement) return compositeStatement;
+            if (compositeStatement.condition === statement) return compositeStatement;
+            if (compositeStatement.update === statement) return compositeStatement;
+            if (compositeStatement.body === statement) return compositeStatement;
+        }
+    }
+    throw new Error("Unable to determine parent");
+}
+
+function findNextStatement(root, node, isGoingUp) {
+    //console.log(root);
+    //console.log(node);
+
+    isGoingUp = !!isGoingUp;
+
+    if (!Array.isArray(root))
+        throw new Error("Root is not an array");
+
+    // Going down for recursion
+    if (!isGoingUp && isBlock(node) && node.statements.length > 0)
+        return isBlock(node.statements[0]) ? findNextStatement(root, node.statements[0]) : node.statements[0];
+    if (!isGoingUp && isForLoop(node))
+        return node.initializer;
+
+    // Finding next statement in root
+    const indexInRoot = root.findIndex(s => s === node);
+    //console.log("indexInRoot " + indexInRoot);
+    if (indexInRoot !== -1) {
+        if (indexInRoot === root.length - 1) {
+            return undefined;
+        }
+        const nextStatementInRoot = root[indexInRoot + 1];
+        return isCompositeStatement(nextStatementInRoot) ? findNextStatement(root, nextStatementInRoot) : nextStatementInRoot;
+    }
+
+    // Finding next statement for specific parent
+    const parentNode = findParentStatement(root, node);
+    if (!parentNode) throw new Error("Could not find parent for " + JSON.stringify(node));
+    //console.log("parentNode " + JSON.stringify(parentNode));
+    if (isBlock(parentNode)) {
+        //console.log("parent is block");
+        const indexInBlock = parentNode.statements.findIndex(s => s === node);
+        return (indexInBlock !== parentNode.statements.length - 1) ? parentNode.statements[indexInBlock + 1] : findNextStatement(root, parentNode, true);
+    }
+    if (isForLoop(parentNode)) {
+        if (parentNode.initializer === node) return parentNode.condition;
+        if (parentNode.condition === node) {
+            if (isExpressionStatement(parentNode.condition) && isTrue(parentNode.condition.value))
+                return isCompositeStatement(parentNode.body) ? findNextStatement(root, parentNode.body) : parentNode.body;
+            else
+                return findNextStatement(root, parentNode, true);
+        }
+        if (parentNode.update === node) return parentNode.condition;
+        if (parentNode.body === node) return parentNode.update;
+    }
+    throw new Error("Could not determine next statement");
 }
 
 function evaluateExpressionStatement(state, expressionCallback) {

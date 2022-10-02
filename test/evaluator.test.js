@@ -283,25 +283,24 @@ describe('evaluator', () => {
             const statement1 = statement(identifier('a'));
             const statement2 = statement(identifier('b'));
             const root = [statement1, statement2];
-            const state = initialState({root, statement: statement1});
 
-            assert.deepEqual(findNextStatement(state), statement2);
+            assert.deepEqual(findNextStatement(root, statement1), statement2);
         });
         it('should return next statement in root from single block', () => {
-            const statement1 = block(statement(identifier('a')));
+            const statement1a = statement(identifier('a'));
+            const statement1 = block(statement1a);
             const statement2 = statement(identifier('b'));
             const root = [statement1, statement2];
-            const state = initialState({root, statement: statement1});
 
-            assert.deepEqual(findNextStatement(state), statement2);
+            assert.deepEqual(findNextStatement(root, statement1a), statement2);
         });
         it('should return next statement in root from multiple block', () => {
-            const statement1 = block(block(statement(identifier('a'))));
+            const statement1a = statement(identifier('a'));
+            const statement1 = block(block(statement1a));
             const statement2 = statement(identifier('b'));
             const root = [statement1, statement2];
-            const state = initialState({root, statement: statement1});
 
-            assert.deepEqual(findNextStatement(state), statement2);
+            assert.deepEqual(findNextStatement(root, statement1a), statement2);
         });
         it('should return next statement in root from multiple block 2', () => {
             const statement1a = statement(identifier('a'));
@@ -309,25 +308,82 @@ describe('evaluator', () => {
             const statement1 = block(block(statement1a, block(statement1b)));
             const statement2 = statement(identifier('c'));
             const root = [statement1, statement2];
-            const state = initialState({root, statement: statement1});
 
-            assert.deepEqual(findNextStatement(state), statement2);
+            assert.deepEqual(findNextStatement(root, statement1b), statement2);
         });
         it('should return next statement in single block from root', () => {
             const statement1 = statement(identifier('a'));
-            const statement2 = block(statement(identifier('b')));
+            const statement2a = statement(identifier('b'));
+            const statement2 = block(statement2a);
             const root = [statement1, statement2];
-            const state = initialState({root, statement: statement1});
 
-            assert.deepEqual(findNextStatement(state), statement2);
+            assert.deepEqual(findNextStatement(root, statement1), statement2a);
         });
         it('should return next statement in multiple block from root', () => {
             const statement1 = statement(identifier('a'));
-            const statement2 = block(statement(identifier('b')));
+            const statement2a = statement(identifier('b'));
+            const statement2 = block(statement2a);
             const root = [statement1, statement2];
-            const state = initialState({root, statement: statement1});
 
-            assert.deepEqual(findNextStatement(state), statement2);
+            assert.deepEqual(findNextStatement(root, statement1), statement2a);
+        });
+
+        it('should return initializer from root with for loop', () => {
+            const statement1 = statement(identifier('a'));
+            const statement2a = statement(identifier('b'));
+            const statement2 = forLoop(statement2a, nullStatement(), nullStatement(), nullStatement());
+            const root = [statement1, statement2];
+
+            assert.deepEqual(findNextStatement(root, statement1), statement2a);
+        });
+        it('should return condition from for initializer in for loop', () => {
+            const statement1a = statement(identifier('a'));
+            const statement1b = statement(identifier('b'));
+            const statement1 = forLoop(statement1a, statement1b, nullStatement(), nullStatement());
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1a), statement1b);
+        });
+        it('should return body from for true condition in for loop (non-block)', () => {
+            const statement1a = statement(intConstant(true));
+            const statement1b = statement(identifier('b'));
+            const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), statement1b);
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1a), statement1b);
+        });
+        it('should return body from for true condition in for loop (block)', () => {
+            const statement1a = statement(intConstant(true));
+            const statement1b = statement(identifier('b'));
+            const statement1c = block(statement1b);
+            const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), statement1c);
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1a), statement1b);
+        });
+        it('should return next statement from for false condition in for loop', () => {
+            const statement1a = statement(intConstant(false));
+            const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), nullStatement());
+            const statement2 = statement(identifier('b'));
+            const root = [statement1, statement2];
+
+            assert.deepEqual(findNextStatement(root, statement1a), statement2);
+        });
+        it('should return update from body in for loop', () => {
+            const statement1a = statement(identifier('a'));
+            const statement1b = statement(identifier('b'));
+            const statement1 = forLoop(nullStatement(), nullStatement(), statement1a, statement1b);
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1b), statement1a);
+        });
+        it('should return condition from update in for loop', () => {
+            const statement1a = statement(identifier('a'));
+            const statement1b = statement(identifier('b'));
+            const statement1 = forLoop(nullStatement(), statement1a, statement1b, nullStatement());
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1b), statement1a);
         });
     });
 
