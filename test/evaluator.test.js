@@ -328,6 +328,40 @@ describe('evaluator', () => {
             assert.deepEqual(findNextStatement(root, statement1), statement2a);
         });
 
+        it('should return body from for true condition in if (non-block)', () => {
+            const statement1a = intConstant(true);
+            const statement1b = statement(identifier('b'));
+            const statement1 = iff( statement1a, statement1b);
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1), statement1b);
+        });
+        it('should return body from for true condition in if (block)', () => {
+            const statement1a = intConstant(true);
+            const statement1b = statement(identifier('b'));
+            const statement1c = block(statement1b);
+            const statement1 = iff(statement1a, statement1c);
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1), statement1b);
+        });
+        it('should return next statement from for false condition in if', () => {
+            const statement1a = intConstant(false);
+            const statement1 = iff(statement1a, nullStatement());
+            const statement2 = statement(identifier('b'));
+            const root = [statement1, statement2];
+
+            assert.deepEqual(findNextStatement(root, statement1), statement2);
+        });
+
+        it('should return update from body in for loop', () => {
+            const statement1a = statement(identifier('a'));
+            const statement1b = statement(identifier('b'));
+            const statement1 = forLoop(nullStatement(), nullStatement(), statement1a, statement1b);
+            const root = [statement1];
+
+            assert.deepEqual(findNextStatement(root, statement1b), statement1a);
+        });
         it('should return initializer from root with for loop', () => {
             const statement1 = statement(identifier('a'));
             const statement2a = statement(identifier('b'));

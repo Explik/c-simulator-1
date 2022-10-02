@@ -388,9 +388,6 @@ function findParentStatement(root, statement) {
 }
 
 function findNextStatement(root, node, isGoingUp) {
-    //console.log(root);
-    //console.log(node);
-
     isGoingUp = !!isGoingUp;
 
     if (!Array.isArray(root))
@@ -401,6 +398,12 @@ function findNextStatement(root, node, isGoingUp) {
         return isBlock(node.statements[0]) ? findNextStatement(root, node.statements[0]) : node.statements[0];
     if (!isGoingUp && isForLoop(node))
         return node.initializer;
+    if (!isGoingUp && isIff(node)) {
+        if (isTrue(node.condition))
+            return isCompositeStatement(node.body) ? findNextStatement(root, node.body) : node.body;
+        else
+            return findNextStatement(root, node, true);
+    }
 
     // Finding next statement in root
     const indexInRoot = root.findIndex(s => s === node);
@@ -416,9 +419,7 @@ function findNextStatement(root, node, isGoingUp) {
     // Finding next statement for specific parent
     const parentNode = findParentStatement(root, node);
     if (!parentNode) throw new Error("Could not find parent for " + JSON.stringify(node));
-    //console.log("parentNode " + JSON.stringify(parentNode));
     if (isBlock(parentNode)) {
-        //console.log("parent is block");
         const indexInBlock = parentNode.statements.findIndex(s => s === node);
         return (indexInBlock !== parentNode.statements.length - 1) ? parentNode.statements[indexInBlock + 1] : findNextStatement(root, parentNode, true);
     }
