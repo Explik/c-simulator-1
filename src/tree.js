@@ -155,10 +155,10 @@ function invoke(identifier) {
 }
 
 function forLoop(initializer, condition, update, body) {
-    if (isStatement(initializer)) throw new Error("initializer is not a statement");
-    if (isStatement(condition)) throw new Error("condition is not a statement");
-    if (isStatement(update)) throw new Error("initializer is not a statement");
-    if (isStatement(body)) throw new Error("initializer is not a statement");
+    if (!isStatement(initializer)) throw new Error("initializer is not a statement");
+    if (!isStatement(condition)) throw new Error("condition is not a statement");
+    if (!isStatement(update)) throw new Error("initializer is not a statement");
+    if (!isStatement(body)) throw new Error("initializer is not a statement");
 
     return {
         type: "statement",

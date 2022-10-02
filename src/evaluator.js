@@ -337,7 +337,7 @@ function evaluateExpressionRecursively(state) {
     return evaluateExpression(state, evaluateExpressionRecursively);
 }
 
-function findNextStatement(state) {
+function findNextStatementInner(state) {
     // Attempts to find statement in root
     const indexInRoot = state.root.findIndex(s => s === state.statement);
     if(indexInRoot !== -1) {
@@ -362,6 +362,15 @@ function findNextStatement(state) {
         }
     }
     return undefined;
+}
+
+function findNextStatement(state) {
+    const nextStatement = findNextStatementInner(state);
+
+    if (isForLoop(nextStatement))
+        return nextStatement.initializer;
+
+    return nextStatement;
 }
 
 function evaluateExpressionStatement(state, expressionCallback) {

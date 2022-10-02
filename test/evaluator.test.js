@@ -428,5 +428,79 @@ describe('evaluator', () => {
                assert.deepEqual(evaluateStatement(state, callback), expectedState);
            });
         });
+
+        describe('for loop statement', () => {
+            it('should navigate to initializer statement in for loop', () => {
+                const statement1 = statement(intConstant(0));
+                const statement2a = statement(identifier('b'));
+                const statement2 = forLoop(statement2a, nullStatement(), nullStatement(), nullStatement());
+                const root = [statement1, statement2];
+                const state = initialState({root, statement: statement1, expression: statement1});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = mergeState(state, {statement: statement2a, expression: statement2a});
+                assert.deepEqual(evaluateStatement(state, callback), expectedState);
+            });
+
+            it('should navigate to condition statement in for loop after initializer', () => {
+                const statement1a = statement(intConstant(0));
+                const statement1b = statement(identifier('b'));
+                const statement1 = forLoop(statement1a, statement1b, nullStatement(), nullStatement());
+                const root = [statement1];
+                const state = initialState({root, statement: statement1a, expression: statement1a});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = mergeState(state, {statement: statement1b, expression: statement1b});
+                assert.deepEqual(evaluateStatement(state, callback), expectedState);
+            });
+
+            it('should navigate to body statement in for loop after true condition', () => {
+                const statement1a = statement(intConstant(true));
+                const statement1b = statement(identifier('b'));
+                const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), statement1b);
+                const root = [statement1];
+                const state = initialState({root, statement: statement1a, expression: statement1a});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = mergeState(state, {statement: statement1b, expression: statement1b});
+                assert.deepEqual(evaluateStatement(state, callback), expectedState);
+            });
+
+            it('should navigate to body statement in for loop after false condition', () => {
+                const statement1a = statement(intConstant(false));
+                const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), nullStatement());
+                const statement2 = statement(identifier('b'));
+                const root = [statement1, statement2];
+                const state = initialState({root, statement: statement1a, expression: statement1a});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = mergeState(state, {statement: statement2, expression: statement2});
+                assert.deepEqual(evaluateStatement(state, callback), expectedState);
+            });
+
+            it('should navigate to update statement in for loop after body statement', () => {
+                const statement1a = statement(intConstant(false));
+                const statement1b = statement(identifier('b'));
+                const statement1 = forLoop(nullStatement(), nullStatement(), statement1a, statement1b);
+                const root = [statement1];
+                const state = initialState({root, statement: statement1b, expression: statement1b});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = mergeState(state, {statement: statement1a, expression: statement1a});
+                assert.deepEqual(evaluateStatement(state, callback), expectedState);
+            });
+
+            it('should navigate to condition statement in for loop after update statement', () => {
+                const statement1a = statement(intConstant(false));
+                const statement1b = statement(identifier('b'));
+                const statement1 = forLoop(nullStatement(), statement1a, statement1b, nullStatement());
+                const root = [statement1];
+                const state = initialState({root, statement: statement1b, expression: statement1b});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                const expectedState = mergeState(state, {statement: statement1a, expression: statement1a});
+                assert.deepEqual(evaluateStatement(state, callback), expectedState);
+            });
+        });
     });
 });
