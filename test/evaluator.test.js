@@ -12,9 +12,9 @@ import {
 } from "../src/tree";
 import {
     evaluate,
-    evaluateExpression, evaluateStatement,
+    evaluateExpression,
     findNextStatement,
-    initialState,
+    initialState, isFullyEvaluated,
     mergeState,
     variable
 } from "../src/evaluator";
@@ -276,6 +276,70 @@ describe('evaluator', () => {
                 assert.deepEqual(evaluateExpression(state, callback), expectedState);
             });
         });
+        describe('expression statement', () => {
+            it('should use callback on non-constant expression', () => {
+                const constant1 = intConstant(5);
+                const originalStatement = statement(identifier('a'));
+                const evaluatedStatement = withExpression(originalStatement, constant1);
+                const state = initialState({statement: originalStatement, expression: originalStatement});
+                const callback = () => mergeState(state, {expression: constant1});
+
+                const expectedState = mergeState(state, {expression: evaluatedStatement});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should not do anything on constant expression', () => {
+                const statement1 = statement(intConstant(3));
+                const state = initialState({statement: statement1, expression: statement1});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                assert.deepEqual(evaluateExpression(state, callback), state);
+            });
+        });
+        describe('declaration statement', () => {
+            it('should use callback on non-constant expression', () => {
+                const constant1 = intConstant(5);
+                const identifier1 = identifier('a');
+                const identifier2 = identifier('b');
+                const originalStatement = intDeclaration(identifier2, identifier1);
+                const evaluatedStatement = withValue(originalStatement, constant1);
+                const state = initialState({statement: originalStatement, expression: originalStatement});
+                const callback = () => mergeState(state, {expression: constant1});
+
+                const expectedState = mergeState(state, {statement: originalStatement, expression: evaluatedStatement});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+            it('should navigate to next statement in block on constant expression', () => {
+                const statement1 = intDeclaration(identifier('b'), intConstant(5));
+                const state = initialState({statement: statement1, expression: statement1});
+                const callback = () => { throw new Error("Invalid operation") };
+
+                assert.deepEqual(evaluateExpression(state, callback), state);
+            });
+        });
+        describe('if statement', () => {
+            it('should use callback on non-constant condition', () => {
+                const constant1 = intConstant(true);
+                const identifier1 = identifier('a');
+                const originalStatement = iff(identifier1, nullStatement());
+                const evaluatedStatement = withCondition(originalStatement, constant1);
+                const state = initialState({statement: originalStatement, expression: originalStatement});
+                const callback = () => mergeState(state, {expression: constant1});
+
+                const expectedState = mergeState(state, {statement: originalStatement, expression: evaluatedStatement});
+                assert.deepEqual(evaluateExpression(state, callback), expectedState);
+            });
+
+            it('should not do anything on constant condition', () => {
+                const statement1a = statement(identifier('a'));
+                const statement1 = iff(intConstant(true), statement1a);
+                const state = initialState({statement: statement1, expression: statement1});
+                const callback = () => {
+                    throw new Error("Invalid operation")
+                };
+
+                assert.deepEqual(evaluateExpression(state, callback), state);
+            });
+        });
     });
 
     describe('findNextStatement', () => {
@@ -421,176 +485,32 @@ describe('evaluator', () => {
         });
     });
 
-    describe('evaluateStatement', () => {
-       describe('expression statement', () => {
-           it('should use callback on non-constant expression', () => {
-               const originalStatement = statement(identifier('a'));
-               const evaluatedStatement = withExpression(originalStatement, intConstant(5));
-               const state = initialState({statement: originalStatement, expression: originalStatement});
-               const callback = () => mergeState(state, {expression: evaluatedStatement});
-
-               const expectedState = mergeState(state, {statement: originalStatement, expression: evaluatedStatement});
-               assert.deepEqual(evaluateStatement(state, callback), expectedState);
-           });
-
-           it('should navigate to next statement in block on constant expression', () => {
-               const statement1 = statement(intConstant(3));
-               const statement2 = statement(identifier('b'));
-               const root = [statement1, statement2];
-               const state = initialState({root, statement: statement1, expression: statement1});
-               const callback = () => { throw new Error("Invalid operation") };
-
-               const expectedState = mergeState(state, {statement: statement2, expression: statement2});
-               assert.deepEqual(evaluateStatement(state, callback), expectedState);
-           });
-       });
-       describe('declaration statement', () => {
-            it('should use callback on non-constant expression', () => {
-                const identifier1 = identifier('a');
-                const identifier2 = identifier('b');
-                const originalStatement = intDeclaration(identifier2, identifier1);
-                const evaluatedStatement = withValue(originalStatement, intConstant(5));
-                const state = initialState({statement: originalStatement, expression: originalStatement});
-                const callback = () => mergeState(state, {expression: evaluatedStatement});
-
-                const expectedState = mergeState(state, {statement: originalStatement, expression: evaluatedStatement});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to next statement in block on constant expression', () => {
-                const identifier2 = identifier('b');
-                const statement1 = intDeclaration(identifier2, intConstant(5));
-                const statement2 = statement(identifier2);
-                const root = [statement1, statement2];
-                const state = initialState({root, statement: statement1, expression: statement1});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement2, expression: statement2});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
+    describe('isFullyEvaluated', () => {
+        it('should return false for non-constant expression statement', () => {
+           const node = statement(identifier('i'));
+           assert.isFalse(isFullyEvaluated(node));
         });
-       describe('if statement', () => {
-            it('should use callback on non-constant condition', () => {
-                const identifier1 = identifier('a');
-                const originalStatement = iff(identifier1, nullStatement());
-                const evaluatedStatement = withCondition(originalStatement, intConstant(5));
-                const state = initialState({statement: originalStatement, expression: originalStatement});
-                const callback = () => mergeState(state, {expression: evaluatedStatement});
-
-                const expectedState = mergeState(state, {statement: originalStatement, expression: evaluatedStatement});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to body statement on true condition (non-block)', () => {
-                const statement1a = statement(identifier('a'));
-                const statement1 = iff(intConstant(true), statement1a);
-                const statement2 = statement(identifier('b'));
-                const root = [statement1, statement2];
-                const state = initialState({root, statement: statement1, expression: statement1});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement1a, expression: statement1a});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-           it('should navigate to body statement on true condition (block)', () => {
-               const statement1a = statement(identifier('a'));
-               const statement1b = block(statement1a);
-               const statement1 = iff(intConstant(true), statement1b);
-               const statement2 = statement(identifier('b'));
-               const root = [statement1, statement2];
-               const state = initialState({root, statement: statement1, expression: statement1});
-               const callback = () => { throw new Error("Invalid operation") };
-
-               const expectedState = mergeState(state, {statement: statement1a, expression: statement1a});
-               assert.deepEqual(evaluateStatement(state, callback), expectedState);
-           });
-
-           it('should navigate to next statement on false condition', () => {
-               const statement1a = statement(identifier('a'));
-               const statement1 = iff(intConstant(false), statement1a);
-               const statement2 = statement(identifier('b'));
-               const root = [statement1, statement2];
-               const state = initialState({root, statement: statement1, expression: statement1});
-               const callback = () => { throw new Error("Invalid operation") };
-
-               const expectedState = mergeState(state, {statement: statement2, expression: statement2});
-               assert.deepEqual(evaluateStatement(state, callback), expectedState);
-           });
+        it('should return true for constant expression statement', () => {
+            const node = statement(intConstant(0));
+            assert.isTrue(isFullyEvaluated(node));
         });
 
-        describe('for loop statement', () => {
-            it('should navigate to initializer statement in for loop', () => {
-                const statement1 = statement(intConstant(0));
-                const statement2a = statement(identifier('b'));
-                const statement2 = forLoop(statement2a, nullStatement(), nullStatement(), nullStatement());
-                const root = [statement1, statement2];
-                const state = initialState({root, statement: statement1, expression: statement1});
-                const callback = () => { throw new Error("Invalid operation") };
+        it('should return false for non-constant declaration statement', () => {
+           const node = intDeclaration(identifier('i'), identifier('j'));
+           assert.isFalse(isFullyEvaluated(node));
+        });
+        it('should return true for constant declaration statement', () => {
+           const node = intDeclaration(identifier('i'), intConstant(0));
+           assert.isTrue(isFullyEvaluated(node));
+        });
 
-                const expectedState = mergeState(state, {statement: statement2a, expression: statement2a});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to condition statement in for loop after initializer', () => {
-                const statement1a = statement(intConstant(0));
-                const statement1b = statement(identifier('b'));
-                const statement1 = forLoop(statement1a, statement1b, nullStatement(), nullStatement());
-                const root = [statement1];
-                const state = initialState({root, statement: statement1a, expression: statement1a});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement1b, expression: statement1b});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to body statement in for loop after true condition', () => {
-                const statement1a = statement(intConstant(true));
-                const statement1b = statement(identifier('b'));
-                const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), statement1b);
-                const root = [statement1];
-                const state = initialState({root, statement: statement1a, expression: statement1a});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement1b, expression: statement1b});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to body statement in for loop after false condition', () => {
-                const statement1a = statement(intConstant(false));
-                const statement1 = forLoop(nullStatement(), statement1a, nullStatement(), nullStatement());
-                const statement2 = statement(identifier('b'));
-                const root = [statement1, statement2];
-                const state = initialState({root, statement: statement1a, expression: statement1a});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement2, expression: statement2});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to update statement in for loop after body statement', () => {
-                const statement1a = statement(intConstant(false));
-                const statement1b = statement(identifier('b'));
-                const statement1 = forLoop(nullStatement(), nullStatement(), statement1a, statement1b);
-                const root = [statement1];
-                const state = initialState({root, statement: statement1b, expression: statement1b});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement1a, expression: statement1a});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
-
-            it('should navigate to condition statement in for loop after update statement', () => {
-                const statement1a = statement(intConstant(false));
-                const statement1b = statement(identifier('b'));
-                const statement1 = forLoop(nullStatement(), statement1a, statement1b, nullStatement());
-                const root = [statement1];
-                const state = initialState({root, statement: statement1b, expression: statement1b});
-                const callback = () => { throw new Error("Invalid operation") };
-
-                const expectedState = mergeState(state, {statement: statement1a, expression: statement1a});
-                assert.deepEqual(evaluateStatement(state, callback), expectedState);
-            });
+        it('should return false for non-constant condition in if statement', () => {
+           const node = iff(identifier('i'), nullStatement());
+           assert.isFalse(isFullyEvaluated(node));
+        });
+        it('should return true for constant condition in if statement', () => {
+            const node = iff(intConstant(true), nullStatement());
+            assert.isTrue(isFullyEvaluated(node));
         });
     });
 });

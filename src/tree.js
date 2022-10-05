@@ -54,7 +54,7 @@ function nullStatement() {
 function declaration(datatype, identifier, value) {
     if (typeof datatype !== "string") throw new Error("datatype is not a string");
     if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
-    if (!isExpression(value)) throw new Error("value is not an expression");
+    if (value && !isExpression(value)) throw new Error("value is not an expression");
 
     return {
         type: "statement",
@@ -328,6 +328,10 @@ function withValue(node, value) {
     if (isDeclaration(node)) return declaration(node.datatype, node.identifier, value);
     if (isAssign(node)) return assign(node.identifier, value);
     if (isAddAssign(node)) return addAssign(node.identifier, value);
+    if (isExpressionStatement(node)) return statement(value);
+    if (isDeclaration(node)) return declaration(node.datatype, node.identifier, value);
+
+    throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
 export function withLeft(node, left) {
@@ -489,7 +493,7 @@ function flatten(node) {
             return [
                 node,
                 ...flatten(node.identifier),
-                ...node.arguments.map(flatten).flat()
+                ...node.arguments.flatMap(flatten)
             ];
         }
         throw new Error("Unsupported operator " + node.operator);

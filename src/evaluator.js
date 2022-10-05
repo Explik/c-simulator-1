@@ -36,7 +36,7 @@ import {
     isExpressionStatement,
     isDeclaration,
     isForLoop,
-    isBlock
+    isBlock, identifier, withCondition
 } from "./tree";
 import {call, find, mergeWithKey} from "ramda";
 
@@ -174,7 +174,8 @@ function evaluateValue(state, callback) {
 
     const {expression, variables} = callback(state.expression.value);
     return mergeState(state, {
-        expression: withValue(state.expression, expression), variables
+        expression: withValue(state.expression, expression),
+        variables
     });
 }
 
@@ -315,13 +316,48 @@ function evaluateInvokeExpression(state, callback) {
     throw new Error("Unsupported function");
 }
 
+function evaluateExpressionStatement(state, callback) {
+    if (isConstant(state.expression.value))
+        return state;
+
+    const {expression, variables} = callback(state.expression.value);
+    return mergeState(state, {
+        expression: withValue(state.expression, expression),
+        variables
+    });
+}
+
+function evaluateDeclarationStatement(state, callback) {
+    if (!isConstant(state.expression.value))
+        return state;
+
+    let {expression, variables} = callback(state.expression.value);
+    if (isConstant(expression)) variables = variables.push(variable(state.identifier, expression));
+    return mergeState(state, {
+        expression: withValue(state.expression, expression),
+        variables
+    });
+}
+
+function evaluateIffStatement(state, callback) {
+    if (!isConstant(state.expression.condition))
+        return state;
+
+    let {expression, variables} = callback(state.expression.condition);
+    return mergeState(state, {
+        expression: withCondition(state.expression, expression),
+        variables
+    });
+}
+
 /**
  *
  * @param {State} state
  * @param callback
- * @returns {State}
+ * @returns {*|{variables: Object[], expression: Object, stdout: string}}
  */
 function evaluateExpression(state, callback) {
+    // Expressions
     if (isAnd(state.expression)) return evaluateAndExpression(state, callback);
     if (isLessThanOrEqual(state.expression)) return evaluateLessThanOrEqualExpression(state, callback);
     if (isEqual(state.expression)) return evaluateEqualExpression(state, callback);
@@ -330,7 +366,12 @@ function evaluateExpression(state, callback) {
     if (isAddAssign(state.expression)) return evaluateAddAssignExpression(state, callback);
     if (isInvoke(state.expression)) return evaluateInvokeExpression(state, callback);
 
-    throw new Error("Unsupported node " + JSON.stringify(node));
+    // Statements
+    if (isExpressionStatement(state.expression)) return evaluateExpressionStatement(state, callback);
+    if (isDeclaration(state.expression)) return evaluateDeclarationStatement(state, callback);
+    if (isIff(state.expression)) return evaluateIffStatement(state, callback);
+
+    throw new Error("Unsupported node " + JSON.stringify(state.expression));
 }
 
 function evaluateExpressionRecursively(state) {
@@ -407,7 +448,6 @@ function findNextStatement(root, node, isGoingUp) {
 
     // Finding next statement in root
     const indexInRoot = root.findIndex(s => s === node);
-    //console.log("indexInRoot " + indexInRoot);
     if (indexInRoot !== -1) {
         if (indexInRoot === root.length - 1) {
             return undefined;
@@ -437,123 +477,12 @@ function findNextStatement(root, node, isGoingUp) {
     throw new Error("Could not determine next statement");
 }
 
-function evaluateExpressionStatement(state, expressionCallback) {
-    if (!isConstant(state.expression.value))
-        return expressionCallback(state.expression);
+function isFullyEvaluated(node) {
+    if (isExpressionStatement(node)) return isConstant(node.value);
+    if (isDeclaration(node)) return isConstant(node.value);
+    if (isIff(node)) return isConstant(node.condition);
 
-    const nextStatement = findNextStatement(state);
-    return mergeState(state, {statement: nextStatement, expression: nextStatement});
+    throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
-function evaluateDeclarationStatement(state, expressionCallback) {
-    if(!isConstant(state.expression.value))
-        return expressionCallback(state.expression.value);
-
-    const nextStatement = findNextStatement(state);
-    return mergeState(state, {statement: nextStatement, expression: nextStatement});
-}
-
-function evaluateIfStatement(state, expressionCallback) {
-    if(!isConstant(state.expression.condition))
-        return expressionCallback(state.expression.value);
-
-    if (isTrue(state.expression.condition)) {
-        if (!isBlock((state.expression.body)))
-            return mergeState(state, {statement: state.expression.body, expression: state.expression.body});
-
-        const nextBodyStatements = flatten(state.expression.body).filter(s => !isBlock(s));
-        if (nextBodyStatements.length > 0) return mergeState(state, {statement: nextBodyStatements[0], expression: nextBodyStatements[0]});
-    }
-
-    const nextStatement = findNextStatement(state);
-    return mergeState(state, {statement: nextStatement, expression: nextStatement});
-}
-
-function evaluateForLoopStatement(state, expressionCallback) {
-    if (node.statementType === "for-loop") {
-        return node.initializer;
-    }
-
-    if(parentNode.statementType === "for") {
-        if (node === parentNode.initializer){
-            return parentNode.condition;
-        }
-        if (node === parentNode.condition) {
-            const isRunning = state.currentExpression.value.value !== 0;
-            return isRunning ? parentNode.body : findNextStatement(parentNode);
-        }
-        if (node === parentNode.update){
-            return parentNode.condition;
-        }
-        if (node === parentNode.body) {
-            return parentNode.update;
-        }
-        throw new Error("Logic error");
-    }
-}
-
-function evaluateStatement(state, expressionCallback) {
-    if (isExpressionStatement(state.statement))
-        return evaluateExpressionStatement(state, expressionCallback);
-    if (isDeclaration(state.statement))
-        return evaluateDeclarationStatement(state, expressionCallback);
-    if (isIff(state.statement))
-        return evaluateIfStatement(state, expressionCallback);
-    if (isForLoop(state.statement))
-        return undefined;
-}
-
-
-// evaluate(root)
-// evaluate(root, state)
-// evaluate(root, node, state)
-function evaluateRecursively(root, node, state) {
-    return evaluate(root, node, state, evaluateRecursively);
-}
-
-function evaluate(root, node, state, callback) {
-    if (arguments.length === 1) {
-        node = root;
-        state = { variables: [], currentStatement: root, currentExpression: root, stdout: "" }
-    }
-    if (arguments.length === 2) {
-        node = root;
-        state = node;
-    }
-
-
-    // Replaces statement
-    if (node.type === "statement" && node.statementType === "expression") {
-        const hasFinishedEvaluating = node.value === undefined || node.value.type === "constant";
-
-        if(!hasFinishedEvaluating) {
-            const newState = evaluate(root, node.value, state);
-            return { ...newState, currentExpression: statement(newState.currentExpression) };
-        }
-    }
-    if (node.type === "statement" && node.operator === "declaration") {
-        if (node.value.type !== "constant") {
-            const newState = evaluate(root, node.value, state);
-            return { ...newState, currentExpression: declaration(node.datatype, node.identifier, newState.value) };
-        }
-        if (state.variables.some(v => v.identifier === node.identifier))
-            throw new Error("Variable is already declared");
-        const variables = [
-            ...state.variables,
-            { identifier: node.identifier, value: node.value }
-        ];
-        return { ...state, currentExpression: node.value, variables: variables };
-    }
-    if (node.type === "statement" && node.statementType === "if") {
-        if(node.condition.type !== "constant") {
-            const newState = evaluate(root, node.condition, state);
-            return { ...newState, currentExpression: iff(newState.currentExpression, node.body) };
-        }
-    }
-    if (node.type === "statement") {
-        const nextStatement = findNextStatement(root, node, state);
-        return { ...state, currentStatement: nextStatement, currentExpression: nextStatement };
-    }
-}
-
-export { evaluate, evaluateExpression, evaluateStatement, findNextStatement, initialState, mergeState, variable }
+export { evaluateExpression, findNextStatement, initialState, mergeState, variable, isFullyEvaluated }

@@ -143,7 +143,7 @@ describe('tree', () => {
 
     it('should flatten tree with invocation (with 1 arguments)', () => {
         const identifierNode = identifier("method");
-        const constantNode = intConstant("par1");
+        const constantNode = intConstant(0);
         const invocationNode = invoke(identifierNode, constantNode);
 
         const expectedList = [
@@ -156,8 +156,8 @@ describe('tree', () => {
 
     it('should flatten tree with invocation (with 2 arguments)', () => {
         const identifierNode = identifier("method");
-        const constantNode1 = intConstant("par1");
-        const constantNode2 = intConstant("par2");
+        const constantNode1 = intConstant(0);
+        const constantNode2 = intConstant(1);
         const invocationNode = invoke(identifierNode, constantNode1, constantNode2);
 
         const expectedList = [
@@ -207,8 +207,7 @@ describe('tree', () => {
         const identifierNode1 = identifier("i");
         const identifierNode2 = identifier("printf");
         const constantNode2 = intConstant(5);
-        const lessThanNode = lessThanOrEqual(identifierNode1, constantNode2);
-        const conditionNode = statement(lessThanNode);
+        const conditionNode = lessThanOrEqual(identifierNode1, constantNode2);
         const invocationNode = invoke(identifierNode2, identifierNode1);
         const statementNode = statement(invocationNode);
         const ifNode = iff(conditionNode, statementNode);
@@ -216,7 +215,6 @@ describe('tree', () => {
         const expectedList = [
             ifNode,
             conditionNode,
-            lessThanNode,
             identifierNode1,
             constantNode2,
             invocationNode,
