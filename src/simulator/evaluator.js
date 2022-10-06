@@ -328,11 +328,11 @@ function evaluateExpressionStatement(state, callback) {
 }
 
 function evaluateDeclarationStatement(state, callback) {
-    if (!isConstant(state.expression.value))
+    if (isConstant(state.expression.value))
         return state;
 
     let {expression, variables} = callback(state.expression.value);
-    if (isConstant(expression)) variables = variables.push(variable(state.identifier, expression));
+    if (isConstant(expression)) variables.push(variable(state.expression.identifier, expression));
     return mergeState(state, {
         expression: withValue(state.expression, expression),
         variables
@@ -340,7 +340,7 @@ function evaluateDeclarationStatement(state, callback) {
 }
 
 function evaluateIffStatement(state, callback) {
-    if (!isConstant(state.expression.condition))
+    if (isConstant(state.expression.condition))
         return state;
 
     let {expression, variables} = callback(state.expression.condition);

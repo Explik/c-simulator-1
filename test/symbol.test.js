@@ -8,8 +8,8 @@ import {
   stringDeclaration,
   and,
   lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement
-} from "../src/tree";
-import {symbolList, stringify, symbolMap} from "../src/symbol";
+} from "../src/simulator/tree";
+import {symbolList, stringify, symbolMap} from "../src/simulator/symbol";
 
 describe('symbol', () => {
   it('should produce correct symbol list for identifier', () => {

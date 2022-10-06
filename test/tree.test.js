@@ -9,7 +9,7 @@ import {
     and,
     lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement,
     flatten, iff
-} from "../src/tree";
+} from "../src/simulator/tree";
 
 describe('tree', () => {
    it('should flatten tree with identifier', () => {

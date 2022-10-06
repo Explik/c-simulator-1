@@ -9,7 +9,7 @@ import {
     and,
     lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement,
     iff, withLeft, withRight, withValue, withArgument, withExpression, withCondition
-} from "../src/tree";
+} from "../src/simulator/tree";
 import {
     evaluate,
     evaluateExpression,
@@ -17,7 +17,7 @@ import {
     initialState, isFullyEvaluated,
     mergeState,
     variable
-} from "../src/evaluator";
+} from "../src/simulator/evaluator";
 
 describe('evaluator', () => {
     describe('evaluateExpression', () => {
