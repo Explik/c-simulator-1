@@ -1,4 +1,4 @@
-import { flatten } from './tree';
+import {flatten, isConstant, isDeclaration, isExpression, isForLoop, isIff} from './tree';
 
 function indentation(depth) {
     let buffer = "";
@@ -247,4 +247,34 @@ function stringify(symbols) {
     return symbols.map(s => s.value).join("");
 }
 
-export { symbolList, symbolMap, stringify };
+function reverseArray(array) {
+    const copyArray = [...array];
+    copyArray.reverse();
+    return copyArray;
+}
+
+function getRange(symbols, node) {
+    const nodeAndDescendents = flatten(node);
+
+    return {
+        start: symbols.findIndex(s => nodeAndDescendents.includes(s.node)),
+        end: symbols.length - reverseArray(symbols).findIndex(s => nodeAndDescendents.includes(s.node)) - 1
+    };
+}
+
+function transformRange(range, symbols, mapCallback) {
+    const symbolsPriorToStart = symbols.slice(0, range.start);
+    const symbolsPriorToEnd = symbols.slice(0, range.end);
+
+    return {
+        start: mapCallback(symbolsPriorToStart).length,
+        end: mapCallback(symbolsPriorToEnd).length
+    };
+}
+
+function getTransformedRange(symbols, node, mapCallback) {
+    const range = getRange(symbols, node);
+    return transformRange(range, symbols, mapCallback);
+}
+
+export { symbolList, symbolMap, stringify, getRange, transformRange, getTransformedRange };
