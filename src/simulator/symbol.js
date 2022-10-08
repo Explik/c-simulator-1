@@ -243,10 +243,6 @@ function symbolMap(node, symbols) {
     return buffer2;
 }
 
-function stringify(symbols) {
-    return symbols.map(s => s.value).join("");
-}
-
 function reverseArray(array) {
     const copyArray = [...array];
     copyArray.reverse();
@@ -281,4 +277,4 @@ function getTransformedRange(symbols, node, mapCallback) {
     return transformRange(range, symbols, mapCallback);
 }
 
-export { symbolList, symbolMap, stringify, getRange, transformRange, getTransformedRange };
+export { symbolList, symbolMap, getRange, transformRange, getTransformedRange };
