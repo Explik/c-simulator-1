@@ -200,7 +200,7 @@ describe('symbolTransformers', () => {
             const operatorNode = increment(identifierNode);
             const symbols = [
                 {value: "i", node: identifierNode},
-                {value: "++ ", node: operatorNode},
+                {value: "++", node: operatorNode},
             ];
 
             const expected = [
@@ -311,6 +311,29 @@ describe('symbolTransformers', () => {
                 {type: 'semicolon', value: ';'},
             ];
             assert.deepEqual(highlightSyntax(symbols), expected);
+        });
+        it ('should handle for-loop statement correctly', () => {
+           const nullNode1 = nullStatement();
+           const nullNode2 = nullStatement();
+           const nullNode3 = nullStatement();
+           const nullNode4 = nullStatement();
+           const forNode = forLoop(nullNode1, nullNode2, nullNode3, nullNode4);
+           const symbols = [
+               {value: "for(", node: forNode},
+               {value: ";", node: nullNode1},
+               {value: ";", node: nullNode2},
+               {value: ")", node: forNode}
+           ];
+
+            const expected = [
+                {type: 'keyword', value: 'for'},
+                {type: 'bracket', value: '('},
+                {type: 'semicolon', value: ';'},
+                {type: 'semicolon', value: ';'},
+                {type: 'bracket', value: ')'},
+            ];
+            assert.deepEqual(highlightSyntax(symbols), expected);
+
         });
         it('should handle block statement correctly, ', () => {
             const identifierNode = identifier("printf");

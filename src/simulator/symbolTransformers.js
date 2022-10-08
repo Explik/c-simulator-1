@@ -11,7 +11,7 @@ import {
     isLessThanOrEqual,
     isStatement,
     isIff,
-    isDeclaration
+    isDeclaration, isInvoke
 } from "./tree";
 
 function stringify(symbols) {
@@ -96,7 +96,7 @@ function highlightSymbol(symbol) {
             else buffer.push({ type: "numeral", value: trimmedValue });
         }
         else if (node.datatype === "char*") {
-            buffer.push({ type: "string", value: trimmedValue });
+            buffer.push({ type: "string", value: symbol.value.trim() });
         }
         else throw new Error("Unsupported symbol " + JSON.stringify(symbol));
     }
@@ -107,6 +107,8 @@ function highlightSymbol(symbol) {
         if (isEqual(node)) buffer.push({ type: "operator", value: trimmedValue });
         if (isIncrement(node)) buffer.push({ type: "operator", value: trimmedValue });
         if (isLessThanOrEqual(node)) buffer.push({ type: "operator", value: trimmedValue });
+
+        if (isInvoke(node) && trimmedValue === ',') buffer.push({ type: 'operator', value: trimmedValue });
     }
     if (isStatement(node)) {
         if (isDeclaration(node)) {
