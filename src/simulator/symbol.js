@@ -264,11 +264,15 @@ function getRange(symbols, node) {
 
 function transformRange(range, symbols, mapCallback) {
     const symbolsPriorToStart = symbols.slice(0, range.start);
-    const symbolsPriorToEnd = symbols.slice(0, range.end);
+    const symbolsPriorToEnd = symbols.slice(0, range.end + 1);
+
+    const transformedStart =  mapCallback(symbolsPriorToStart).length;
+    const transformedEnd = mapCallback(symbolsPriorToEnd).length;
+    const transformedWidth = transformedEnd - transformedStart;
 
     return {
-        start: mapCallback(symbolsPriorToStart).length,
-        end: mapCallback(symbolsPriorToEnd).length
+        start: transformedStart,
+        end: transformedStart + transformedWidth - 1
     };
 }
 

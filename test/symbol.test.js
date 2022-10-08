@@ -465,7 +465,7 @@ describe('symbol', () => {
 
       const transformedRange = {
         start: 2,
-        end: 4
+        end: 3
       };
       assert.deepEqual(transformRange(range, symbols, callback), transformedRange);
     });
