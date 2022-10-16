@@ -130,7 +130,7 @@ function symbolListIff(node, depth) {
         return [
             { value: "if (", node: node },
             ...symbolList(node.condition, depth),
-            { value: ")\n" + indentation(depth), node: node },
+            { value: ")\n" + indentation(depth + 1), node: node },
             ...symbolList(node.body, depth)
         ];
     }
@@ -139,14 +139,15 @@ function symbolListIff(node, depth) {
 function symbolListBlock(node, depth) {
     const statementList = [];
     for(let i = 0; i < node.statements.length; i++) {
-        statementList.push({ value: indentation(depth), node });
+        const newLine =  i !== 0 ? "\n" : "";
+        statementList.push({ value: newLine + indentation(depth), node });
         symbolList(node.statements[i], depth).forEach(s => statementList.push(s));
     }
 
     return [
         { value: "{\n", node: node },
         ...statementList,
-        { value: "\n}", node: node }
+        { value: "\n" + indentation(depth - 1) + "}", node: node }
     ];
 }
 

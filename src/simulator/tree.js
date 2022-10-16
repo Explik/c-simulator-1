@@ -28,7 +28,8 @@ function intConstant(value) {
 }
 
 function stringConstant(value) {
-    return constant(value, "char*");
+    const newValue = value.replace("\n", "\\n");
+    return constant(newValue, "char*");
 }
 
 function statement(expr) {
@@ -488,6 +489,97 @@ function flatten(node) {
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
+
+function applyBinaryOperator(node, callback) {
+    const left = callback(node.left);
+    const right = callback(node.right);
+    return withRight(withLeft(node, left), right);
+}
+
+function applyLeftOperator(node, callback) {
+    const identifier = callback(node.identifier);
+    return withIdentifier(node, identifier);
+}
+
+function applyAssignOperator(node, callback) {
+    const identifier = callback(node.identifier);
+    const value = callback(node.value);
+    return withValue(withIdentifier(node, identifier), value);
+}
+
+function applyInvokeOperator(node, callback) {
+    const identifier = callback(node.identifier);
+    const args = node.arguments.map(callback);
+    return invoke(identifier, ...args);
+}
+
+function applyBlockStatement(node, callback) {
+    const statements = node.statements.map(callback);
+    return withStatements(node, statements);
+}
+
+function applyExpressionStatement(node, callback) {
+    const value = callback(node.value);
+    return withValue(node, value);
+}
+
+function applyForLoopStatement(node, callback) {
+    const initializer = callback(node.initializer);
+    const condition = callback(node.condition);
+    const update = callback(node.update);
+    const body = callback(node.body);
+
+    return forLoop(initializer, condition, update, body);
+}
+
+function applyIfStatement(node, callback) {
+    const condition = callback(node.condition);
+    const body = callback(node.body);
+    return iff(condition, body);
+}
+
+function apply(node, callback) {
+    if(node.type === "statement") {
+        if (node.statementType === "block")
+            return applyBlockStatement(node, callback);
+        if (node.statementType === "declaration")
+            return applyAssignOperator(node, callback);
+        if (node.statementType === "expression")
+            return applyExpressionStatement(node, callback);
+        if (node.statementType === "for-loop")
+            return applyForLoopStatement(node, callback);
+        if (node.statementType === "if")
+            return applyIfStatement(node, callback);
+        throw new Error("Unsupported statementType " + node.statementType);
+    }
+    if (node.type === "expression") {
+        if (node.operator === "and")
+            return applyBinaryOperator(node, callback);
+        if (node.operator === "equal")
+            return applyBinaryOperator(node, callback);
+        if (node.operator === "less-than-or-equal")
+            return applyBinaryOperator(node, callback);
+        if (node.operator === "assign")
+            return applyAssignOperator(node, callback);
+        if (node.operator === "add-assign")
+            return applyAssignOperator(node, callback);
+        if (node.operator === "increment")
+            return applyLeftOperator(node, callback);
+        if (node.operator === "invoke")
+            return applyInvokeOperator(node, callback);
+        throw new Error("Unsupported operator " + node.operator);
+    }
+    if (node.type === "constant")
+        return callback(node);
+    if (node.type === "identifier")
+        return callback(node);
+    throw new Error("Unsupported node " + JSON.stringify(node));
+}
+
+function substitute(root, target, replacement) {
+    return apply(root, (n) => n === target ? replacement : n);
+}
+
 export {
     identifier,
     declaration,
@@ -541,5 +633,6 @@ export {
     withBody,
     withStatements,
     numericalValue,
-    flatten
+    flatten,
+    substitute
 };

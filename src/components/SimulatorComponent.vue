@@ -9,6 +9,7 @@
 import {symbolList} from "@/simulator/symbol";
 import SourceComponent from "@/components/SourceComponent";
 import VariableComponent from "@/components/VariableComponent";
+import {substitute} from "@/simulator/tree";
 
 export default {
   name: 'SimulatorComponent',
@@ -23,7 +24,12 @@ export default {
   },
   computed: {
     symbols: function() {
-      return (this.state.root.flatMap(symbolList));
+      const target = this.state.statement;
+      const replacement = this.state.expression;
+      const substituteExpression = n => substitute(n, target, replacement);
+      const getSymbolList = n => [...symbolList(n), { value: "\n", node: n }];
+
+      return this.state.root.map(substituteExpression).flatMap(getSymbolList);
     }
   }
 }

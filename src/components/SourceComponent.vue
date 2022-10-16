@@ -1,10 +1,5 @@
 <template>
-  <code>
-    <span v-for="symbol in allSymbols" :key="symbol.node" :class="symbol.type">
-      {{symbol.value}}
-      <br v-if="symbol.value.trim() === ';' || symbol.value.trim() === '{' || symbol.value.trim() === '}'"/>
-    </span>
-  </code>
+  <pre><code v-html="preformattedContent" class="source-component-code"></code></pre>
 </template>
 
 <script>
@@ -16,32 +11,52 @@ export default {
     symbols: {type: Array, required: true}
   },
   computed: {
-    allSymbols: function() {
-      return highlightSyntax(this.symbols);
+    preformattedContent: function() {
+      let buffer = "";
+      const symbols = highlightSyntax(this.symbols);
+
+      for(let symbol of symbols) {
+        if (this.hasCssClass(symbol)) {
+          buffer += `<span class="source-component-${symbol.type}">${symbol.value}</span>`;
+        }
+        else buffer += symbol.value;
+      }
+      return buffer;
+    }
+  },
+  methods: {
+    hasCssClass: function(symbol) {
+      const cssClasses = [
+          "include", "identifier", "keyword", "type", "numeral", "string"
+      ];
+      return cssClasses.includes(symbol.type);
     }
   }
 }
 </script>
 
-<style scoped>
-  code {
+<style>
+  .source-component-code {
     font-family: monospace;
     font-weight: 900;
     color: #000;
   }
-  .include {
+  .source-component-include {
     color: #2b91af;
   }
-  .identifier {
-    color: #a31515;
+  .source-component-identifier {
+    //color: #a31515;
   }
-  .keyword {
+  .source-component-keyword {
     color: #00f;
   }
-  .type {
-    //color: #2b91af;
+  .source-component-type {
+    color: #811e99;
   }
-  .numeral {
+  .source-component-numeral {
     color: darkorange;
+  }
+  .source-component-string {
+    color: #77787d;
   }
 </style>

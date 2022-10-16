@@ -41,9 +41,11 @@ const root = [
               intDeclaration(j, intConstant(0)),
               statement(lessThanOrEqual(j, i)),
               statement(increment(j)),
-              block(invoke(printf, stringConstant(" %d"), j))
+              block(
+                  statement(invoke(printf, stringConstant(" %d"), j))
+              )
           ),
-          invoke(printf, stringConstant("\n")),
+          statement(invoke(printf, stringConstant("\n"))),
           iff(equal(i, n), statement(assign(step, intConstant(-1))))
       )
   )
