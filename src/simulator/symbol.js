@@ -1,4 +1,4 @@
-import {flatten, isConstant, isDeclaration, isExpression, isForLoop, isIff} from './tree';
+import {flatten} from './tree';
 
 function indentation(depth) {
     let buffer = "";
@@ -98,7 +98,7 @@ function symbolListForLoop(node, depth) {
             { value: " ", node: node },
             ...symbolList(node.condition, depth),
             { value: " ", node: node },
-            updateStatement,
+            ...updateStatement,
             { value: ") ", node: node },
             ...symbolList(node.body, depth)
         ];

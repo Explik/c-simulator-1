@@ -1,18 +1,9 @@
 import {
     flatten,
-    declaration,
-    addAssign,
-    and,
-    assign,
     intConstant,
-    invoke,
-    lessThanOrEqual,
-    statement,
-    iff,
     withLeft,
     withRight,
     isIdentifier,
-    isBinary,
     isConstant,
     isExpression,
     isAnd,
@@ -28,7 +19,6 @@ import {
     hasRight,
     hasValue,
     isInvoke,
-    withArguments,
     withArgument,
     isLessThanOrEqual,
     isFalse,
@@ -36,9 +26,9 @@ import {
     isExpressionStatement,
     isDeclaration,
     isForLoop,
-    isBlock, identifier, withCondition
+    isBlock,
+    withCondition
 } from "./tree";
-import {call, find, mergeWithKey} from "ramda";
 
 /** @typedef {Object} State
  *  @property {Object} expression
@@ -114,7 +104,9 @@ function mergeState(state, stateChange) {
 
     // Absolute changes
     if (stateChange.root) newState.root = stateChange.root;
+    // eslint-disable-next-line
     if (stateChange.statement || stateChange.hasOwnProperty("statement")) newState.statement = stateChange.statement;
+    // eslint-disable-next-line
     if (stateChange.expression || stateChange.hasOwnProperty("expression")) newState.expression = stateChange.expression;
     if (stateChange.variables) newState.variables = stateChange.variables;
 
@@ -261,6 +253,7 @@ function evaluateAssignExpression(state, callback) {
     });
 }
 
+//eslint-disable-next-line
 function evaluateIncrementExpression(state, callback) {
     if (!isIncrement(state.expression))
         throw new Error("state.expression is not an increment expression");
@@ -374,6 +367,7 @@ function evaluateExpression(state, callback) {
     throw new Error("Unsupported node " + JSON.stringify(state.expression));
 }
 
+//eslint-disable-next-line
 function evaluateExpressionRecursively(state) {
     return evaluateExpression(state, evaluateExpressionRecursively);
 }

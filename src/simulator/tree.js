@@ -1,6 +1,4 @@
 // Tree components
-import {stat} from "@babel/core/lib/gensync-utils/fs";
-
 function identifier(name) {
     if (typeof name !== "string") throw new Error("name is not a string");
 
@@ -172,7 +170,7 @@ function forLoop(initializer, condition, update, body) {
 
 function iff(condition, body) {
     if (!isExpression(condition)) throw new Error("condition is not an expression");
-    if (!isStatement(body)) throw new Error("initializer is not a statement");
+    if (!isStatement(body)) throw new Error("body is not a statement");
 
     return {
         type: "statement",
@@ -188,23 +186,6 @@ function block() {
         statementType: "block",
         statements: Array.from(arguments)
     };
-}
-
-// Fake tree components
-function fakeIdentifier(name) {
-    return identifier(name);
-}
-
-function fakeConstant(name) {
-    return constant("value", "datatype");
-}
-
-function fakeStatement(name) {
-    throw new Error();
-}
-
-function fakeDeclaration(name) {
-    throw new Error();
 }
 
 // Tree node evaluators
