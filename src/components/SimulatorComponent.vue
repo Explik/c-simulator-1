@@ -1,19 +1,21 @@
 <template>
   <div>
-    <SourceComponent :symbols="this.symbols" />
+    <source-component :symbols="this.symbols" />
+    <variable-component :variables="this.state.variables" />
   </div>
 </template>
 
 <script>
 import {symbolList} from "@/simulator/symbol";
 import SourceComponent from "@/components/SourceComponent";
+import VariableComponent from "@/components/VariableComponent";
 
 export default {
   name: 'SimulatorComponent',
   props: {
     initialState: {type: Object, required: true}
   },
-  components: {SourceComponent},
+  components: {SourceComponent, VariableComponent},
   data() {
     return {
       state: this.initialState
