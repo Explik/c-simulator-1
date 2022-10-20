@@ -20,6 +20,7 @@ import {
   isFullyEvaluated,
   mergeState
 } from "@/simulator/evaluator";
+import {substitute} from "@/simulator/tree";
 
 export default {
   name: 'SimulatorComponent',
@@ -38,7 +39,12 @@ export default {
     },
     currentSymbols: function() {
       const getSymbolList = n => [...symbolList(n), { value: "\n", node: n }];
-      return this.currentState.evaluatedRoot.flatMap(getSymbolList);
+      // Computed changes
+      const target = this.currentState.statement;
+      const replacement = this.currentState.expression;
+      const substituteExpression = n => substitute(n, target, replacement);
+
+      return this.currentState.root.map(substituteExpression).flatMap(getSymbolList);
     },
     currentVariables: function() {
       return this.currentState.variables;
@@ -49,7 +55,7 @@ export default {
       console.log("step forward");
       let newState;
       if(isFullyEvaluated(this.currentState.expression)) {
-        const nextStatement = findNextStatement(this.currentState.evaluatedRoot, this.currentState.expression);
+        const nextStatement = findNextStatement(this.currentState);
         newState = mergeState(this.currentState, {
           statement: nextStatement,
           expression: nextStatement

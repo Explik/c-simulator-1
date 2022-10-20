@@ -27,8 +27,7 @@ import {
     isDeclaration,
     isForLoop,
     isBlock,
-    withCondition,
-    substitute
+    withCondition
 } from "./tree";
 
 /** @typedef {Object} State
@@ -119,12 +118,6 @@ function mergeState(state, stateChange) {
         newState.variables = [...filteredVariables, stateChange.variable]
     } 
     if (stateChange.stdout) newState.stdout += stateChange.stdout;
-
-    // Computed changes
-    const target = newState.statement;
-    const replacement = newState.expression;
-    const substituteExpression = n => substitute(n, target, replacement);
-    newState.evaluatedRoot = newState.root.map(substituteExpression);
 
     return newState;
 }
@@ -447,7 +440,7 @@ function findParentStatement(root, statement) {
     throw new Error("Unable to determine parent");
 }
 
-function findNextStatement(root, node, isGoingUp) {
+function findNextStatementPrivate(root, node, evaluatedNode, isGoingUp) {
     isGoingUp = !!isGoingUp;
 
     if (!Array.isArray(root))
@@ -455,14 +448,14 @@ function findNextStatement(root, node, isGoingUp) {
 
     // Going down for recursion
     if (!isGoingUp && isBlock(node) && node.statements.length > 0)
-        return isBlock(node.statements[0]) ? findNextStatement(root, node.statements[0]) : node.statements[0];
+        return isBlock(node.statements[0]) ? findNextStatementPrivate(root, node.statements[0], evaluatedNode) : node.statements[0];
     if (!isGoingUp && isForLoop(node))
         return node.initializer;
     if (!isGoingUp && isIff(node)) {
-        if (isTrue(node.condition))
-            return isCompositeStatement(node.body) ? findNextStatement(root, node.body) : node.body;
+        if (isTrue(evaluatedNode.condition))
+            return isCompositeStatement(node.body) ? findNextStatementPrivate(root, node.body, evaluatedNode) : node.body;
         else
-            return findNextStatement(root, node, true);
+            return findNextStatementPrivate(root, node, evaluatedNode, true);
     }
 
     // Finding next statement in root
@@ -472,7 +465,7 @@ function findNextStatement(root, node, isGoingUp) {
             return undefined;
         }
         const nextStatementInRoot = root[indexInRoot + 1];
-        return isCompositeStatement(nextStatementInRoot) ? findNextStatement(root, nextStatementInRoot) : nextStatementInRoot;
+        return isCompositeStatement(nextStatementInRoot) ? findNextStatementPrivate(root, nextStatementInRoot, evaluatedNode) : nextStatementInRoot;
     }
 
     // Finding next statement for specific parent
@@ -480,20 +473,24 @@ function findNextStatement(root, node, isGoingUp) {
     if (!parentNode) throw new Error("Could not find parent for " + JSON.stringify(node));
     if (isBlock(parentNode)) {
         const indexInBlock = parentNode.statements.findIndex(s => s === node);
-        return (indexInBlock !== parentNode.statements.length - 1) ? parentNode.statements[indexInBlock + 1] : findNextStatement(root, parentNode, true);
+        return (indexInBlock !== parentNode.statements.length - 1) ? parentNode.statements[indexInBlock + 1] : findNextStatementPrivate(root, parentNode, evaluatedNode, true);
     }
     if (isForLoop(parentNode)) {
         if (parentNode.initializer === node) return parentNode.condition;
         if (parentNode.condition === node) {
-            if (isExpressionStatement(parentNode.condition) && isTrue(parentNode.condition.value))
-                return isCompositeStatement(parentNode.body) ? findNextStatement(root, parentNode.body) : parentNode.body;
+            if (isExpressionStatement(parentNode.condition) && isTrue(evaluatedNode.value))
+                return isCompositeStatement(parentNode.body) ? findNextStatementPrivate(root, parentNode.body, evaluatedNode) : parentNode.body;
             else
-                return findNextStatement(root, parentNode, true);
+                return findNextStatementPrivate(root, parentNode, evaluatedNode, true);
         }
         if (parentNode.update === node) return parentNode.condition;
         if (parentNode.body === node) return parentNode.update;
     }
     throw new Error("Could not determine next statement");
+}
+
+function findNextStatement(state) {
+    return findNextStatementPrivate(state.root, state.statement, state.expression);
 }
 
 function isFullyEvaluated(node) {
