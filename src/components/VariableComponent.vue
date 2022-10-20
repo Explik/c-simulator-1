@@ -24,7 +24,7 @@ export default {
     formattedVariables: function() {
       return this.variables.map(v => {
         return {
-          name: v.name,
+          name: v.identifier.name,
           value: stringify(symbolList(v.value))
         }
       });

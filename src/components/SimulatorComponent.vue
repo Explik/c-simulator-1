@@ -1,15 +1,25 @@
 <template>
   <div>
-    <source-component :symbols="this.symbols" />
-    <variable-component :variables="this.state.variables" />
+    <source-component :symbols="this.currentSymbols" />
+    <variable-component :variables="this.currentVariables" />
+    <div>
+      <button @click="stepBackward" style="display: inline-block"><i class="material-icons">skip_previous</i></button>
+      <button @click="stepForward" style="display: inline-block"><i class="material-icons">skip_next</i></button>
+    </div>
   </div>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 </template>
 
 <script>
 import {symbolList} from "@/simulator/symbol";
 import SourceComponent from "@/components/SourceComponent";
 import VariableComponent from "@/components/VariableComponent";
-import {substitute} from "@/simulator/tree";
+import {
+  evaluateExpressionRecursively,
+  findNextStatement,
+  isFullyEvaluated,
+  mergeState
+} from "@/simulator/evaluator";
 
 export default {
   name: 'SimulatorComponent',
@@ -19,17 +29,46 @@ export default {
   components: {SourceComponent, VariableComponent},
   data() {
     return {
-      state: this.initialState
+      states: [this.initialState]
     };
   },
   computed: {
-    symbols: function() {
-      const target = this.state.statement;
-      const replacement = this.state.expression;
-      const substituteExpression = n => substitute(n, target, replacement);
+    currentState: function() {
+      return this.states[this.states.length - 1];
+    },
+    currentSymbols: function() {
       const getSymbolList = n => [...symbolList(n), { value: "\n", node: n }];
+      return this.currentState.evaluatedRoot.flatMap(getSymbolList);
+    },
+    currentVariables: function() {
+      return this.currentState.variables;
+    }
+  },
+  methods: {
+    stepForward: function() {
+      console.log("step forward");
+      let newState;
+      if(isFullyEvaluated(this.currentState.expression)) {
+        const nextStatement = findNextStatement(this.currentState.evaluatedRoot, this.currentState.expression);
+        newState = mergeState(this.currentState, {
+          statement: nextStatement,
+          expression: nextStatement
+        });
+      }
+      else {
+        newState = evaluateExpressionRecursively(this.currentState);
+      }
 
-      return this.state.root.map(substituteExpression).flatMap(getSymbolList);
+      console.log(newState);
+      this.states = [
+          ...this.states,
+          newState
+      ];
+    },
+    stepBackward: function() {
+      console.log("step backward");
+      if (this.states.length > 1)
+        this.states = this.states.slice(0, -1);
     }
   }
 }

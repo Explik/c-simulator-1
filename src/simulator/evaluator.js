@@ -27,10 +27,13 @@ import {
     isDeclaration,
     isForLoop,
     isBlock,
-    withCondition
+    withCondition,
+    substitute
 } from "./tree";
 
 /** @typedef {Object} State
+ *  @property {Object[]} root
+ *  @property {Object[]} evaluatedRoot
  *  @property {Object} expression
  *  @property {Object[]} variables
  *  @property {string} stdout
@@ -117,6 +120,12 @@ function mergeState(state, stateChange) {
     } 
     if (stateChange.stdout) newState.stdout += stateChange.stdout;
 
+    // Computed changes
+    const target = newState.statement;
+    const replacement = newState.expression;
+    const substituteExpression = n => substitute(n, target, replacement);
+    newState.evaluatedRoot = newState.root.map(substituteExpression);
+
     return newState;
 }
 
@@ -144,7 +153,7 @@ function evaluateLeft(state, callback) {
     if (!hasLeft(state.expression))
         throw new Error("state.expression has no left argument");
 
-    const {expression, variables} = callback(state.expression.left);
+    const {expression, variables} = callback(mergeState(state, {expression: state.expression.left}));
     return mergeState(state, {
         expression: withLeft(state.expression, expression), variables
     });
@@ -154,7 +163,7 @@ function evaluateRight(state, callback) {
     if (!hasRight(state.expression))
         throw new Error("state.expression has no right argument");
 
-    const {expression, variables} = callback(state.expression.right);
+    const {expression, variables} = callback(mergeState(state, {expression: state.expression.right}));
     return mergeState(state, {
         expression: withRight(state.expression, expression), variables
     });
@@ -164,9 +173,20 @@ function evaluateValue(state, callback) {
     if (!hasValue(state.expression))
         throw new Error("state.expression has no value argument");
 
-    const {expression, variables} = callback(state.expression.value);
+    const {expression, variables} = callback(mergeState(state, {expression: state.expression.value}));
     return mergeState(state, {
         expression: withValue(state.expression, expression),
+        variables
+    });
+}
+
+function evaluateCondition(state, callback) {
+    if (!isIff(state.expression))
+        throw new Error("state.expression has no iff");
+
+    const {expression, variables} = callback(state.expression.condition);
+    return mergeState(state, {
+        expression: withCondition(state.expression, expression),
         variables
     });
 }
@@ -184,6 +204,18 @@ function evaluateArguments(state, callback) {
     const {expression, variables} = callback(args[argIndex]);
     return mergeState(state, {
         expression:withArgument(state.expression, expression, argIndex), variables
+    });
+}
+
+function evaluateIdentifier(state) {
+    if (!isIdentifier(state.expression))
+        throw new Error("state.expression is not an identifier");
+
+    if (!hasVariable(state, state.expression))
+        throw new Error("Identifier " + state.expression.name + " has not been declared yet");
+
+    return mergeState(state, {
+       expression: getValue(state, state.expression)
     });
 }
 
@@ -313,34 +345,27 @@ function evaluateExpressionStatement(state, callback) {
     if (isConstant(state.expression.value))
         return state;
 
-    const {expression, variables} = callback(state.expression.value);
-    return mergeState(state, {
-        expression: withValue(state.expression, expression),
-        variables
-    });
+    return evaluateValue(state, callback);
 }
 
 function evaluateDeclarationStatement(state, callback) {
     if (isConstant(state.expression.value))
         return state;
 
-    let {expression, variables} = callback(state.expression.value);
-    if (isConstant(expression)) variables.push(variable(state.expression.identifier, expression));
-    return mergeState(state, {
-        expression: withValue(state.expression, expression),
-        variables
-    });
+    let newState = evaluateValue(state, callback);
+    if (isConstant(newState.expression.value)){
+        return mergeState(newState, {
+            variables: [...newState.variables, variable(state.expression.identifier, newState.expression.value)]
+        });
+    }
+    return newState;
 }
 
 function evaluateIffStatement(state, callback) {
     if (isConstant(state.expression.condition))
         return state;
 
-    let {expression, variables} = callback(state.expression.condition);
-    return mergeState(state, {
-        expression: withCondition(state.expression, expression),
-        variables
-    });
+    return evaluateCondition(state, callback);
 }
 
 /**
@@ -351,6 +376,7 @@ function evaluateIffStatement(state, callback) {
  */
 function evaluateExpression(state, callback) {
     // Expressions
+    if (isIdentifier(state.expression)) return evaluateIdentifier(state, callback);
     if (isAnd(state.expression)) return evaluateAndExpression(state, callback);
     if (isLessThanOrEqual(state.expression)) return evaluateLessThanOrEqualExpression(state, callback);
     if (isEqual(state.expression)) return evaluateEqualExpression(state, callback);
@@ -367,7 +393,6 @@ function evaluateExpression(state, callback) {
     throw new Error("Unsupported node " + JSON.stringify(state.expression));
 }
 
-//eslint-disable-next-line
 function evaluateExpressionRecursively(state) {
     return evaluateExpression(state, evaluateExpressionRecursively);
 }
@@ -479,4 +504,4 @@ function isFullyEvaluated(node) {
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
-export { evaluateExpression, findNextStatement, initialState, mergeState, variable, isFullyEvaluated }
+export { evaluateExpression, evaluateExpressionRecursively, findNextStatement, initialState, mergeState, variable, isFullyEvaluated }

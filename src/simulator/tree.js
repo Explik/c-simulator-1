@@ -293,7 +293,7 @@ function hasRight(node) {
 }
 
 function hasValue(node) {
-    return isAssign(node) || isAddAssign(node);
+    return isAssign(node) || isAddAssign(node) || isExpressionStatement(node) || isDeclaration(node);
 }
 
 function withIdentifier(node, identifier) {
@@ -529,6 +529,9 @@ function applyForLoopStatement(node, callback) {
     const update = callback(node.update);
     const body = callback(node.body);
 
+    console.log(JSON.stringify(node.condition));
+    console.log(JSON.stringify(callback(node.condition)));
+
     return forLoop(initializer, condition, update, body);
 }
 
@@ -538,7 +541,7 @@ function applyIfStatement(node, callback) {
     return iff(condition, body);
 }
 
-function apply(node, callback) {
+function applyExpressionAndStatement(node, callback) {
     if(node.type === "statement") {
         if (node.statementType === "block")
             return applyBlockStatement(node, callback);
@@ -574,6 +577,11 @@ function apply(node, callback) {
     if (node.type === "identifier")
         return callback(node);
     throw new Error("Unsupported node " + JSON.stringify(node));
+}
+
+function apply(node, callback) {
+    // Applies the callback to the root
+    return applyExpressionAndStatement(callback(node), callback);
 }
 
 function substitute(root, target, replacement) {
