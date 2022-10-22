@@ -15,10 +15,7 @@ import {symbolList} from "@/simulator/symbol";
 import SourceComponent from "@/components/SourceComponent";
 import VariableComponent from "@/components/VariableComponent";
 import {
-  evaluateExpressionRecursively,
-  findNextStatement,
-  isFullyEvaluated,
-  mergeState
+  evaluateExpressionRecursively
 } from "@/simulator/evaluator";
 import {substitute} from "@/simulator/tree";
 
@@ -53,18 +50,7 @@ export default {
   methods: {
     stepForward: function() {
       console.log("step forward");
-      let newState;
-      if(isFullyEvaluated(this.currentState.expression)) {
-        const nextStatement = findNextStatement(this.currentState);
-        newState = mergeState(this.currentState, {
-          statement: nextStatement,
-          expression: nextStatement
-        });
-      }
-      else {
-        newState = evaluateExpressionRecursively(this.currentState);
-      }
-
+      let newState = evaluateExpressionRecursively(this.currentState);
       console.log(newState);
       this.states = [
           ...this.states,

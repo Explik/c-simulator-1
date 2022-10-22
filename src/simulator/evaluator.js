@@ -1,5 +1,4 @@
 import {
-    flatten,
     intConstant,
     withLeft,
     withRight,
@@ -25,10 +24,9 @@ import {
     isIff,
     isExpressionStatement,
     isDeclaration,
-    isForLoop,
-    isBlock,
-    withCondition
+    withCondition, isConditionalGotoStatement, isGotoStatement
 } from "./tree";
+import {getEvaluationTree} from "@/simulator/treeTransformers";
 
 /** @typedef {Object} State
  *  @property {Object[]} root
@@ -92,9 +90,9 @@ function initialState(state) {
  */
 function mergeState(state, stateChange) {
     if (stateChange.root && !Array.isArray(stateChange.root))
-        throw new Error("stateChange.expression is not an array");
+        throw new Error("stateChange.root is not an array");
     if (stateChange.root && stateChange.root.some(v => !isStatement(v)))
-        throw new Error("stateChange.variables contains non-statement");
+        throw new Error("stateChange.root contains non-statement");
     if (stateChange.expression && !(isExpression(stateChange.expression) || isStatement(stateChange.expression)))
         throw new Error("stateChange.expression is not an expression or statement");
     if (stateChange.variables && stateChange.variables.some(v => !isVariable(v)))
@@ -106,6 +104,7 @@ function mergeState(state, stateChange) {
 
     // Absolute changes
     if (stateChange.root) newState.root = stateChange.root;
+    if (stateChange.root) newState.evaluationRoot = getEvaluationTree(stateChange.root);
     // eslint-disable-next-line
     if (stateChange.statement || stateChange.hasOwnProperty("statement")) newState.statement = stateChange.statement;
     // eslint-disable-next-line
@@ -174,10 +173,10 @@ function evaluateValue(state, callback) {
 }
 
 function evaluateCondition(state, callback) {
-    if (!isIff(state.expression))
+    if (!isIff(state.expression) && !isConditionalGotoStatement(state.expression))
         throw new Error("state.expression has no iff");
 
-    const {expression, variables} = callback(state.expression.condition);
+    const {expression, variables} = callback(mergeState(state, {expression: state.expression.condition}));
     return mergeState(state, {
         expression: withCondition(state.expression, expression),
         variables
@@ -194,7 +193,7 @@ function evaluateArguments(state, callback) {
     if (argIndex === -1)
         throw new Error("state.expression.arguments does not contain non-constant")
 
-    const {expression, variables} = callback(args[argIndex]);
+    const {expression, variables} = callback(mergeState(state, {expression: args[argIndex]}));
     return mergeState(state, {
         expression:withArgument(state.expression, expression, argIndex), variables
     });
@@ -335,30 +334,69 @@ function evaluateInvokeExpression(state, callback) {
 }
 
 function evaluateExpressionStatement(state, callback) {
-    if (isConstant(state.expression.value))
-        return state;
+    if (!isConstant(state.expression.value))
+        return evaluateValue(state, callback);
 
-    return evaluateValue(state, callback);
+    const indexInRoot = state.evaluationRoot.findIndex(s => s === state.statement);
+    if (indexInRoot === -1) throw new Error("Statement does not exist in tree");
+    const nextStatements = state.evaluationRoot.slice(indexInRoot + 1);
+    const nextStatement = nextStatements.find(isStatement);
+
+    return mergeState(state, {
+        statement: nextStatement,
+        expression: nextStatement,
+    });
 }
 
 function evaluateDeclarationStatement(state, callback) {
-    if (isConstant(state.expression.value))
-        return state;
+    if (!isConstant(state.expression.value))
+        return evaluateValue(state, callback);
 
-    let newState = evaluateValue(state, callback);
-    if (isConstant(newState.expression.value)){
-        return mergeState(newState, {
-            variables: [...newState.variables, variable(state.expression.identifier, newState.expression.value)]
-        });
-    }
-    return newState;
+    const variables = [...state.variables, variable(state.expression.identifier, state.expression.value)];
+
+    const indexInRoot = state.evaluationRoot.findIndex(s => s === state.statement);
+    if (indexInRoot === -1) throw new Error("Statement does not exist in tree");
+    const nextStatements = state.evaluationRoot.slice(indexInRoot + 1);
+    const nextStatement = nextStatements.find(isStatement);
+
+    return mergeState(state, {
+        statement: nextStatement,
+        expression: nextStatement,
+        variables: variables
+    });
 }
 
-function evaluateIffStatement(state, callback) {
-    if (isConstant(state.expression.condition))
-        return state;
+function evaluateGotoStatement(state) {
+    const label = state.expression.label;
+    const indexInRoot = state.evaluationRoot.findIndex(s => s === label);
+    if (indexInRoot === -1) throw new Error("Label " + label.name + "does not exist in tree");
 
-    return evaluateCondition(state, callback);
+    // Finds first non-label
+    const nextStatements = state.evaluationRoot.slice(indexInRoot);
+    const nextStatement = nextStatements.find(isStatement);
+
+    return mergeState(state, {
+        statement: nextStatement,
+        expression: nextStatement
+    });
+}
+
+function evaluateConditionalGotoStatement(state, callback) {
+    if (!isConstant(state.expression.condition))
+        return evaluateCondition(state, callback);
+
+    const label = isTrue(state.expression.condition) ? state.expression.trueLabel : state.expression.falseLabel;
+    const indexInRoot = state.evaluationRoot.findIndex(s => s === label);
+    if (indexInRoot === -1) throw new Error("Label " + label.name + "does not exist in tree");
+
+    // Finds first non-label
+    const nextStatements = state.evaluationRoot.slice(indexInRoot);
+    const nextStatement = nextStatements.find(isStatement);
+
+    return mergeState(state, {
+        statement: nextStatement,
+        expression: nextStatement
+    });
 }
 
 /**
@@ -381,168 +419,14 @@ function evaluateExpression(state, callback) {
     // Statements
     if (isExpressionStatement(state.expression)) return evaluateExpressionStatement(state, callback);
     if (isDeclaration(state.expression)) return evaluateDeclarationStatement(state, callback);
-    if (isIff(state.expression)) return evaluateIffStatement(state, callback);
+    if (isGotoStatement(state.expression)) return evaluateGotoStatement(state, callback);
+    if (isConditionalGotoStatement(state.expression)) return evaluateConditionalGotoStatement(state, callback);
 
     throw new Error("Unsupported node " + JSON.stringify(state.expression));
 }
 
 function evaluateExpressionRecursively(state) {
     return evaluateExpression(state, evaluateExpressionRecursively);
-}
-
-function isCompositeStatement(statement) {
-    return isBlock(statement) || isForLoop(statement);
-}
-
-function findParentStatement(root, statement) {
-    //console.log(root);
-
-    if (!Array.isArray(root))
-        throw new Error("Root is not an array");
-
-    // Verifies that statement has parent
-    const indexInRoot = root.findIndex(s => s === statement);
-    if(indexInRoot !== -1) {
-        return undefined;
-    }
-
-    // Attempts to find parent
-    const statements = root.flatMap(flatten);
-    //console.log(statements);
-    //console.log(statement);
-    //console.log(statements);
-    const indexInStatements = statements.findIndex(s => s === statement);
-    //console.log("indexOfStatements: "+indexInStatements);
-    if (indexInStatements === -1) throw new Error("Statement is not located in root tree");
-
-    const priorStatements = statements.slice(0, indexInStatements);
-    //console.log(priorStatements);
-    const priorCompositeStatements = priorStatements.filter(s => isIff(s) || isBlock(s) || isForLoop(s));
-    //console.log(priorCompositeStatements);
-
-    for(let i = priorCompositeStatements.length - 1; i >= 0; i--) {
-        const compositeStatement = priorCompositeStatements[i];
-        //console.log(compositeStatement);
-
-        //if (isBlock(compositeStatement)) console.log(compositeStatement.statements);
-
-        if (isIff(compositeStatement) && compositeStatement.body === statement)
-            return compositeStatement;
-        if (isBlock(compositeStatement) && compositeStatement.statements.some(s => s === statement))
-            return compositeStatement;
-        if (isForLoop(compositeStatement)) {
-            if (compositeStatement.initializer === statement) return compositeStatement;
-            if (compositeStatement.condition === statement) return compositeStatement;
-            if (compositeStatement.update === statement) return compositeStatement;
-            if (compositeStatement.body === statement) return compositeStatement;
-        }
-    }
-    throw new Error("Unable to determine parent");
-}
-
-function findNextStatementPrivate(root, node, evaluatedNode, isGoingUp) {
-    isGoingUp = !!isGoingUp;
-
-    if (!Array.isArray(root))
-        throw new Error("Root is not an array");
-
-    // Going down for recursion
-    if (!isGoingUp && isBlock(node) && node.statements.length > 0)
-        return isBlock(node.statements[0]) ? findNextStatementPrivate(root, node.statements[0], evaluatedNode) : node.statements[0];
-    if (!isGoingUp && isForLoop(node))
-        return node.initializer;
-    if (!isGoingUp && isIff(node)) {
-        if (isTrue(evaluatedNode.condition))
-            return isCompositeStatement(node.body) ? findNextStatementPrivate(root, node.body, evaluatedNode) : node.body;
-        else
-            return findNextStatementPrivate(root, node, evaluatedNode, true);
-    }
-
-    // Finding next statement in root
-    const indexInRoot = root.findIndex(s => s === node);
-    if (indexInRoot !== -1) {
-        if (indexInRoot === root.length - 1) {
-            return undefined;
-        }
-        const nextStatementInRoot = root[indexInRoot + 1];
-        return isCompositeStatement(nextStatementInRoot) ? findNextStatementPrivate(root, nextStatementInRoot, evaluatedNode) : nextStatementInRoot;
-    }
-
-    // Finding next statement for specific parent
-    const parentNode = findParentStatement(root, node);
-    if (!parentNode) throw new Error("Could not find parent for " + JSON.stringify(node));
-    if (isBlock(parentNode)) {
-        const indexInBlock = parentNode.statements.findIndex(s => s === node);
-        return (indexInBlock !== parentNode.statements.length - 1) ? parentNode.statements[indexInBlock + 1] : findNextStatementPrivate(root, parentNode, evaluatedNode, true);
-    }
-    if (isForLoop(parentNode)) {
-        if (parentNode.initializer === node) return parentNode.condition;
-        if (parentNode.condition === node) {
-            if (isExpressionStatement(parentNode.condition) && isTrue(evaluatedNode.value))
-                return isCompositeStatement(parentNode.body) ? findNextStatementPrivate(root, parentNode.body, evaluatedNode) : parentNode.body;
-            else
-                return findNextStatementPrivate(root, parentNode, evaluatedNode, true);
-        }
-        if (parentNode.update === node) return parentNode.condition;
-        if (parentNode.body === node) return parentNode.update;
-    }
-    throw new Error("Could not determine next statement");
-}
-
-function takeWhile(arr, f) {
-    const buffer = [];
-
-    for(let i = 0; i < arr.length; i++) {
-        if (!f(arr[i])) {
-            return buffer;
-        }
-        buffer.push(arr[i]);
-    }
-}
-
-function findNextStatement(state) {
-    if (!Array.isArray(state.root))
-        throw new Error("Root is not an array");
-
-    // Find all nodes in
-    const statements = state.root.flatMap(flatten).filter(s => isStatement(s) && !isBlock(s));
-    const indexInStatements = statements.findIndex(s => s === state.statement);
-    const previousStatements = statements.slice(0, indexInStatements);
-    const nextStatements = statements.slice(indexInStatements, statements.length);
-
-    // Current statement is if statement, so next statement is body or after
-    if (isIff(state.statement)) {
-        if (isTrue(state.expression)) {
-            const firstStatementInIff = nextStatements.find(s => s.depth > statements[indexInStatements].depth);
-            if (firstStatementInIff) return firstStatementInIff;
-        }
-        // Else is not yet supported
-    }
-    // Current statement is for-loop initializer, so next statement is for-loop condition
-    else if (statements.length > 2 && isForLoop(statements[indexInStatements - 1]))
-        return statements[indexInStatements + 1];
-    // Current statement is for-loop condition, so next statement is for-loop body or out of loop
-    else if (statements.length > 3 && isForLoop(statements[indexInStatements - 2])) {
-        if (isTrue(state.expression)) {
-            const firstStatementInLoop = nextStatements.find(s => s.depth > statements[indexInStatements].depth);
-            if (firstStatementInLoop) return firstStatementInLoop;
-        }
-        return nextStatements.find(s => s.depth <= statements[indexInStatements].depth);
-    }
-    // Current statement is for-loop update, so next statement is for-loop condition
-    else if (statements.length > 3 && isForLoop(statements[indexInStatements - 2]))
-        return statements[indexInStatements + 1];
-
-    // Current statement is inside if
-    let lowestDepth = statements[indexInStatements].depth;
-
-
-    // Current statement is inside for-loop update
-
-
-    // Current
-
-    return nextStatements.find(s => s.depth <= statements[indexInStatements].depth);
 }
 
 function isFullyEvaluated(node) {
@@ -553,4 +437,4 @@ function isFullyEvaluated(node) {
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
-export { evaluateExpression, evaluateExpressionRecursively, findNextStatement, initialState, mergeState, variable, isFullyEvaluated }
+export { evaluateExpression, evaluateExpressionRecursively, initialState, mergeState, variable, isFullyEvaluated }

@@ -8,6 +8,13 @@ function identifier(name) {
     };
 }
 
+function label(name) {
+    return {
+        type: "label",
+        name: name
+    };
+}
+
 function constant(value, datatype) {
     if (typeof datatype !== "string") throw new Error("datatype is not a string");
 
@@ -50,6 +57,27 @@ function nullStatement() {
     };
 }
 
+function goto(label) {
+    return {
+        type: "statement",
+        statementType: "goto",
+        label: label
+    }
+}
+
+function conditionalGoto(condition, trueLabel, falseLabel) {
+    if (!isExpression(condition))
+        throw new Error("condition is not an expression");
+
+    return {
+        type: "statement",
+        statementType: "conditional-goto",
+        condition: condition,
+        trueLabel: trueLabel,
+        falseLabel: falseLabel
+    };
+}
+
 function declaration(datatype, identifier, value) {
     if (typeof datatype !== "string") throw new Error("datatype is not a string");
     if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
@@ -61,6 +89,17 @@ function declaration(datatype, identifier, value) {
         identifier: identifier,
         datatype: datatype,
         value: value
+    };
+}
+
+// Pseudo element
+function undeclaration(identifier) {
+    if (!isIdentifier(identifier)) throw new Error("identifier is not an identifier");
+
+    return {
+        type: "statement",
+        statementType: "undeclaration",
+        identifier: identifier,
     };
 }
 
@@ -204,6 +243,14 @@ function isExpression(node) {
 
 function isStatement(node) {
     return node.type === "statement";
+}
+
+function isGotoStatement(node) {
+    return node.type === "statement" && node.statementType === "goto";
+}
+
+function isConditionalGotoStatement(node) {
+    return node.type === "statement" && node.statementType === "conditional-goto";
 }
 
 function isDeclaration(node) {
@@ -369,6 +416,8 @@ function withInitializer(node, initializer) {
 function withCondition(node, condition) {
     if (isForLoop(node)) return forLoop(node.initializer, condition, node.update, node.body);
     if (isIff(node)) return iff(condition, node.body);
+    if (isConditionalGotoStatement(node)) return conditionalGoto(condition, node.trueLabel, node.falseLabel);
+
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
@@ -650,5 +699,11 @@ export {
     withStatements,
     numericalValue,
     flatten,
-    substitute
+    substitute,
+    undeclaration,
+    label,
+    goto,
+    conditionalGoto,
+    isGotoStatement,
+    isConditionalGotoStatement
 };
