@@ -387,104 +387,112 @@ function withStatements(node, statements) {
     if (isBlock(node)) return block(statements);
 }
 
-function flattenBinaryOperator(node) {
+function flattenBinaryOperator(node, depth) {
     return [
-        node,
-        ...flatten(node.left),
-        ...flatten(node.right)
+        { ...node, depth },
+        ...flatten(node.left, depth),
+        ...flatten(node.right, depth)
     ];
 }
 
-function flattenLeftOperator(node) {
+function flattenLeftOperator(node, depth) {
     return [
-        node,
-        ...flatten(node.identifier)
+        { ...node, depth },
+        ...flatten(node.identifier, depth)
     ];
 }
 
-function flattenAssignOperator(node) {
+function flattenAssignOperator(node, depth) {
     return [
-        node,
-        ...flatten(node.identifier),
-        ...flatten(node.value)
+        { ...node, depth },
+        ...flatten(node.identifier, depth),
+        ...flatten(node.value, depth)
     ];
 }
 
-function flatten(node) {
+function flatten(node, depth) {
     if (!node)
         return [];
+    if (!depth)
+        depth = 0;
 
     if(node.type === "statement") {
         if (node.statementType === "block") {
             return [
-                node,
-                ...node.statements.flatMap(flatten)
+                { ...node, depth },
+                ...node.statements.flatMap(s => flatten(s, depth + 1))
             ];
         }
         if (node.statementType === "declaration") {
             return [
-                node,
-                ...flatten(node.identifier),
-                ...flatten(node.value)
+                { ...node, depth },
+                ...flatten(node.identifier, depth),
+                ...flatten(node.value, depth)
             ];
         }
         if (node.statementType === "expression") {
             return [
-                node,
-                ...flatten(node.value)
+                { ...node, depth },
+                ...flatten(node.value, depth)
             ];
         }
         if (node.statementType === "for-loop") {
+            // Avoids the depth being double incremented due to a block body
+            let nextDepth = isBlock(node.body) ? depth : depth + 1;
+
             return [
-                node,
-                ...flatten(node.initializer),
-                ...flatten(node.condition),
-                ...flatten(node.update),
-                ...flatten(node.body)
+                { ...node, depth },
+                ...flatten(node.initializer, depth),
+                ...flatten(node.condition, depth),
+                ...flatten(node.update, depth),
+                ...flatten(node.body, nextDepth)
             ];
         }
         if (node.statementType === "if") {
+            // Avoids the depth being double incremented due to a block body
+            let nextDepth = isBlock(node.body) ? depth : depth + 1;
+
             return [
-                node,
-                ...flatten(node.condition),
-                ...flatten(node.body)
+                { ...node, depth },
+                ...flatten(node.condition, depth),
+                ...flatten(node.body, nextDepth)
             ];
         }
         throw new Error("Unsupported statementType " + node.statementType);
     }
     if (node.type === "expression") {
         if (node.operator === "and") {
-            return flattenBinaryOperator(node);
+            return flattenBinaryOperator(node, depth);
         }
         if (node.operator === "equal") {
-            return flattenBinaryOperator(node);
+            return flattenBinaryOperator(node, depth);
         }
         if (node.operator === "less-than-or-equal") {
-            return flattenBinaryOperator(node);
+            return flattenBinaryOperator(node, depth);
         }
         if (node.operator === "assign") {
-            return flattenAssignOperator(node);
+            return flattenAssignOperator(node, depth);
         }
         if (node.operator === "add-assign") {
-            return flattenAssignOperator(node);
+            return flattenAssignOperator(node, depth);
         }
         if (node.operator === "increment") {
-            return flattenLeftOperator(node);
+            return flattenLeftOperator(node, depth);
         }
         if (node.operator === "invoke") {
             return [
-                node,
+                { ...node, depth },
                 ...flatten(node.identifier),
-                ...node.arguments.flatMap(flatten)
+                ...node.arguments.flatMap(s => flatten(s, depth))
             ];
         }
         throw new Error("Unsupported operator " + node.operator);
     }
     if (node.type === "constant") {
-        return [node];
+        return [{ ...node, depth }];
     }
     if (node.type === "identifier") {
-        return [node];
+        return [{ ...node, depth }];
     }
     throw new Error("Unsupported node " + JSON.stringify(node));
 }

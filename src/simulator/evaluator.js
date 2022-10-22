@@ -489,8 +489,60 @@ function findNextStatementPrivate(root, node, evaluatedNode, isGoingUp) {
     throw new Error("Could not determine next statement");
 }
 
+function takeWhile(arr, f) {
+    const buffer = [];
+
+    for(let i = 0; i < arr.length; i++) {
+        if (!f(arr[i])) {
+            return buffer;
+        }
+        buffer.push(arr[i]);
+    }
+}
+
 function findNextStatement(state) {
-    return findNextStatementPrivate(state.root, state.statement, state.expression);
+    if (!Array.isArray(state.root))
+        throw new Error("Root is not an array");
+
+    // Find all nodes in
+    const statements = state.root.flatMap(flatten).filter(s => isStatement(s) && !isBlock(s));
+    const indexInStatements = statements.findIndex(s => s === state.statement);
+    const previousStatements = statements.slice(0, indexInStatements);
+    const nextStatements = statements.slice(indexInStatements, statements.length);
+
+    // Current statement is if statement, so next statement is body or after
+    if (isIff(state.statement)) {
+        if (isTrue(state.expression)) {
+            const firstStatementInIff = nextStatements.find(s => s.depth > statements[indexInStatements].depth);
+            if (firstStatementInIff) return firstStatementInIff;
+        }
+        // Else is not yet supported
+    }
+    // Current statement is for-loop initializer, so next statement is for-loop condition
+    else if (statements.length > 2 && isForLoop(statements[indexInStatements - 1]))
+        return statements[indexInStatements + 1];
+    // Current statement is for-loop condition, so next statement is for-loop body or out of loop
+    else if (statements.length > 3 && isForLoop(statements[indexInStatements - 2])) {
+        if (isTrue(state.expression)) {
+            const firstStatementInLoop = nextStatements.find(s => s.depth > statements[indexInStatements].depth);
+            if (firstStatementInLoop) return firstStatementInLoop;
+        }
+        return nextStatements.find(s => s.depth <= statements[indexInStatements].depth);
+    }
+    // Current statement is for-loop update, so next statement is for-loop condition
+    else if (statements.length > 3 && isForLoop(statements[indexInStatements - 2]))
+        return statements[indexInStatements + 1];
+
+    // Current statement is inside if
+    let lowestDepth = statements[indexInStatements].depth;
+
+
+    // Current statement is inside for-loop update
+
+
+    // Current
+
+    return nextStatements.find(s => s.depth <= statements[indexInStatements].depth);
 }
 
 function isFullyEvaluated(node) {
