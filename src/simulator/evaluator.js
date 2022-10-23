@@ -24,7 +24,7 @@ import {
     isIff,
     isExpressionStatement,
     isDeclaration,
-    withCondition, isConditionalGotoStatement, isGotoStatement
+    withCondition, isConditionalGotoStatement, isGotoStatement, voidConstant
 } from "./tree";
 import {getEvaluationTree} from "@/simulator/treeTransformers";
 
@@ -326,7 +326,7 @@ function evaluateInvokeExpression(state, callback) {
             printValue = printValue.replace("%d", args[1].value);
 
         return mergeState(state, {
-            expression: undefined,
+            expression: voidConstant,
             stdout: printValue
         });
     }

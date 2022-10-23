@@ -25,6 +25,8 @@ function constant(value, datatype) {
     };
 }
 
+const voidConstant = constant(undefined, "void");
+
 function intConstant(value) {
     if (typeof value === "boolean")
         return intConstant(value ? 1 : 0);
@@ -383,11 +385,11 @@ function withArgument(node, arg, position) {
     if (!isExpression(arg)) throw new Error("arg is not an expression");
 
     const newArguments = [
-        ...node.arguments.slice(0, position - 1),
-        arg.expression,
+        ...node.arguments.slice(0, position),
+        arg,
         ...node.arguments.slice(position + 1)
     ];
-    if (isInvoke(node)) return invoke(node.identifier, newArguments);
+    if (isInvoke(node)) return invoke(node.identifier, ...newArguments);
 
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
@@ -705,5 +707,6 @@ export {
     goto,
     conditionalGoto,
     isGotoStatement,
-    isConditionalGotoStatement
+    isConditionalGotoStatement,
+    voidConstant
 };
