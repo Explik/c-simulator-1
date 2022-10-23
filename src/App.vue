@@ -30,10 +30,10 @@ const printf = identifier('printf');
 const step = identifier('step');
 
 const root = [
-  intDeclaration(n, and(intConstant(4), intConstant(3))),
-  intDeclaration(step, and(intConstant(1), intConstant(1))),
+  intDeclaration(n, intConstant(7)),
+  intDeclaration(step, intConstant(1)),
   forLoop(
-      intDeclaration(i, and(intConstant(0), intConstant(3))),
+      intDeclaration(i, intConstant(0)),
       statement(and(lessThanOrEqual(intConstant(0), i), lessThanOrEqual(i, n))),
       statement(addAssign(i, step)),
       block(
