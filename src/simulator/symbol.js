@@ -244,18 +244,15 @@ function symbolMap(node, symbols) {
     return buffer2;
 }
 
-function reverseArray(array) {
-    const copyArray = [...array];
-    copyArray.reverse();
-    return copyArray;
-}
-
 function getRange(symbols, node) {
     const nodeAndDescendents = flatten(node);
+    const start = symbols.findIndex(s => nodeAndDescendents.includes(s.node));
+    const nextSymbols = symbols.slice(start);
+    const width = nextSymbols.findIndex(s => !nodeAndDescendents.includes(s.node));
 
     return {
-        start: symbols.findIndex(s => nodeAndDescendents.includes(s.node)),
-        end: symbols.length - reverseArray(symbols).findIndex(s => nodeAndDescendents.includes(s.node)) - 1
+        start: start,
+        end: start + width - 1
     };
 }
 
