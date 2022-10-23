@@ -1,6 +1,6 @@
 <template>
   <div>
-    <source-component :symbols="this.currentSymbols" />
+    <source-component :symbols="this.currentSource.symbols" :highlightedSymbolRange="this.currentSource.highlightedSymbolRange" />
     <variable-component :variables="this.currentVariables" />
     <div>
       <button @click="stepBackward" style="display: inline-block"><i class="material-icons">skip_previous</i></button>
@@ -13,13 +13,12 @@
 </template>
 
 <script>
-import {symbolList} from "@/simulator/symbol";
 import SourceComponent from "@/components/SourceComponent";
 import VariableComponent from "@/components/VariableComponent";
 import {
   evaluateExpressionRecursively
 } from "@/simulator/evaluator";
-import {substitute} from "@/simulator/tree";
+import {getHighlightedSymbols} from "@/simulator/stateTransformers";
 
 export default {
   name: 'SimulatorComponent',
@@ -38,14 +37,8 @@ export default {
     currentState: function() {
       return this.states[this.states.length - 1];
     },
-    currentSymbols: function() {
-      const getSymbolList = n => [...symbolList(n), { value: "\n", node: n }];
-      // Computed changes
-      const target = this.currentState.statement;
-      const replacement = this.currentState.expression;
-      const substituteExpression = n => substitute(n, target, replacement);
-
-      return this.currentState.root.map(substituteExpression).flatMap(getSymbolList);
+    currentSource: function() {
+      return getHighlightedSymbols(this.currentState);
     },
     currentVariables: function() {
       return this.currentState.variables;

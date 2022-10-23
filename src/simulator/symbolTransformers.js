@@ -14,7 +14,7 @@ import {
     isDeclaration, isInvoke
 } from "./tree";
 
-function stringify(symbols) {
+export function stringify(symbols) {
     return symbols.map(s => s.value).join("");
 }
 
@@ -46,7 +46,7 @@ function reverseString(str) {
     return str.split("").reverse().join("");
 }
 
-function highlightTrivia(str) {
+function highlightTrivia(str, node) {
     const buffer = [];
     let currentType = undefined;
     let previousType = undefined;
@@ -62,7 +62,7 @@ function highlightTrivia(str) {
         }
 
        if (currentType !== previousType) {
-           buffer.push({ type: currentType, value: str[i] });
+           buffer.push({ type: currentType, node: node, value: str[i] });
        }
        else buffer[buffer.length - 1].value += str[i];
     }
@@ -79,51 +79,51 @@ function highlightSymbol(symbol) {
 
     // Highlight whitespace and brackets prior to content
     if (startTrivia) {
-        for(let item of highlightTrivia(startTrivia))
+        for(let item of highlightTrivia(startTrivia, node))
             buffer.push(item);
     }
 
     // Highlight content
     if (isIdentifier(node)) {
-        buffer.push({ type: "identifier", value: trimmedValue });
+        buffer.push({ type: "identifier", node: node, value: trimmedValue });
     }
     if (isConstant(node)) {
         if (node.datatype === "int") {
             if (trimmedValue[0] === '-') {
-                buffer.push({ type: "operator", value: trimmedValue[0] });
-                buffer.push({ type: "numeral", value: trimmedValue.slice(1) });
+                buffer.push({ type: "operator", node: node, value: trimmedValue[0] });
+                buffer.push({ type: "numeral", node: node, value: trimmedValue.slice(1) });
             }
-            else buffer.push({ type: "numeral", value: trimmedValue });
+            else buffer.push({ type: "numeral", node: node, value: trimmedValue });
         }
         else if (node.datatype === "char*") {
-            buffer.push({ type: "string", value: symbol.value.trim() });
+            buffer.push({ type: "string", node: node, value: symbol.value.trim() });
         }
         else throw new Error("Unsupported symbol " + JSON.stringify(symbol));
     }
     if (isExpression(node)) {
-        if (isAnd(node)) buffer.push({ type: "operator", value: trimmedValue });
-        if (isAssign(node)) buffer.push({ type: "operator", value: trimmedValue });
-        if (isAddAssign(node)) buffer.push({ type: "operator", value: trimmedValue });
-        if (isEqual(node)) buffer.push({ type: "operator", value: trimmedValue });
-        if (isIncrement(node)) buffer.push({ type: "operator", value: trimmedValue });
-        if (isLessThanOrEqual(node)) buffer.push({ type: "operator", value: trimmedValue });
+        if (isAnd(node)) buffer.push({ type: "operator", node: node, value: trimmedValue });
+        if (isAssign(node)) buffer.push({ type: "operator", node: node, value: trimmedValue });
+        if (isAddAssign(node)) buffer.push({ type: "operator", node: node, value: trimmedValue });
+        if (isEqual(node)) buffer.push({ type: "operator", node: node, value: trimmedValue });
+        if (isIncrement(node)) buffer.push({ type: "operator", node: node, value: trimmedValue });
+        if (isLessThanOrEqual(node)) buffer.push({ type: "operator", node: node, value: trimmedValue });
 
-        if (isInvoke(node) && trimmedValue === ',') buffer.push({ type: 'operator', value: trimmedValue });
+        if (isInvoke(node) && trimmedValue === ',') buffer.push({ type: 'operator', node: node, value: trimmedValue });
     }
     if (isStatement(node)) {
         if (isDeclaration(node)) {
-            if (trimmedValue === '=') buffer.push({ type: "operator", value: trimmedValue });
-            if (trimmedValue === node.datatype) buffer.push({ type: "type", value: trimmedValue });
+            if (trimmedValue === '=') buffer.push({ type: "operator", node: node, value: trimmedValue });
+            if (trimmedValue === node.datatype) buffer.push({ type: "type", node: node, value: trimmedValue });
         }
-        if (isIff(node) && trimmedValue === "if") buffer.push({ type: "keyword", value: trimmedValue });
-        if (isForLoop(node) && trimmedValue === "for") buffer.push({ type: "keyword", value: trimmedValue });
+        if (isIff(node) && trimmedValue === "if") buffer.push({ type: "keyword", node: node, value: trimmedValue });
+        if (isForLoop(node) && trimmedValue === "for") buffer.push({ type: "keyword", node: node, value: trimmedValue });
 
-        if (trimmedValue === ';') buffer.push({ type: 'semicolon', value: trimmedValue });
+        if (trimmedValue === ';') buffer.push({ type: 'semicolon', node: node, value: trimmedValue });
     }
 
     // Highlight whitespace and brackets after content
     if (endTrivia) {
-        for(let item of highlightTrivia(endTrivia))
+        for(let item of highlightTrivia(endTrivia, node))
             buffer.push(item);
     }
 
@@ -131,8 +131,6 @@ function highlightSymbol(symbol) {
 }
 
 // [{type, value}]
-function highlightSyntax(symbols) {
+export function highlightSyntax(symbols) {
     return symbols.flatMap(highlightSymbol);
 }
-
-export {stringify, highlightSyntax};

@@ -4,22 +4,27 @@
 
 <script>
 import {highlightSyntax} from "@/simulator/symbolTransformers";
+import {getRange} from "@/simulator/symbol";
 
 export default {
   name: "SourceComponent",
   props: {
-    symbols: {type: Array, required: true}
+    symbols: {type: Array, required: true},
+    highlightedSymbolRange: {type: Object, required: true},
   },
   computed: {
     preformattedContent: function() {
       let buffer = "";
-      const symbols = highlightSyntax(this.symbols);
 
-      for(let symbol of symbols) {
+      for(let i = 0; i < this.symbols.length; i++) {
+        let symbol = this.symbols[i];
+
+        if (i === this.highlightedSymbolRange.start) buffer += '<span class="source-component-highlight">';
         if (this.hasCssClass(symbol)) {
-          buffer += `<span class="source-component-${symbol.type}">${symbol.value}</span>`;
+            buffer += `<span class="source-component-${symbol.type}">${symbol.value}</span>`;
         }
         else buffer += symbol.value;
+        if (i === this.highlightedSymbolRange.end) buffer += "</span>";
       }
       return buffer;
     }
@@ -36,6 +41,9 @@ export default {
 </script>
 
 <style>
+  .source-component-highlight {
+    background-color: #2b91af;
+  }
   .source-component-code {
     font-family: monospace;
     font-weight: 900;
