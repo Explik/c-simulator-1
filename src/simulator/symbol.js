@@ -1,4 +1,4 @@
-import {flatten} from './tree';
+import {flatten, isIdentifier} from './tree';
 
 function indentation(depth) {
     let buffer = "";
@@ -244,15 +244,28 @@ function symbolMap(node, symbols) {
     return buffer2;
 }
 
+function findFirstIndex(arr, predicate) {
+    return arr.findIndex(predicate);
+}
+
+function findLastIndex(arr, predicate) {
+    for(let i = arr.length - 1; i > 0; i--) {
+        if (predicate[arr[i]])
+            return i;
+    }
+    return -1;
+}
+
 function getRange(symbols, node) {
     const nodeAndDescendents = flatten(node);
-    const start = symbols.findIndex(s => nodeAndDescendents.includes(s.node));
-    const nextSymbols = symbols.slice(start);
-    const width = nextSymbols.findIndex(s => !nodeAndDescendents.includes(s.node));
+    const nodeAndDescendentsWithoutIdentifiers = nodeAndDescendents.filter(s => !isIdentifier(s));
+    const middle = symbols.findIndex(s => nodeAndDescendentsWithoutIdentifiers.includes(s.node));
+    const widthLeft = findLastIndex(symbols.slice(0, middle), s => nodeAndDescendents.includes(s.node));
+    const widthRight = findFirstIndex(symbols.slice(middle), s => !nodeAndDescendents.includes(s.node));
 
     return {
-        start: start,
-        end: start + width - 1
+        start: middle - widthLeft - 1,
+        end: middle + widthRight - 1
     };
 }
 

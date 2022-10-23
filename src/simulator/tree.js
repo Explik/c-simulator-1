@@ -67,16 +67,19 @@ function goto(label) {
     }
 }
 
-function conditionalGoto(condition, trueLabel, falseLabel) {
+function conditionalGoto(condition, trueLabel, falseLabel, originalStatement) {
     if (!isExpression(condition))
         throw new Error("condition is not an expression");
+    if (!isStatement(originalStatement))
+        throw new Error("originalStament is not a statement");
 
     return {
         type: "statement",
         statementType: "conditional-goto",
         condition: condition,
         trueLabel: trueLabel,
-        falseLabel: falseLabel
+        falseLabel: falseLabel,
+        originalStatement: originalStatement
     };
 }
 
@@ -415,10 +418,14 @@ function withInitializer(node, initializer) {
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
+export function hasCondition(node) {
+    return isForLoop(node) || isIff(node) || isConditionalGotoStatement(node);
+}
+
 function withCondition(node, condition) {
     if (isForLoop(node)) return forLoop(node.initializer, condition, node.update, node.body);
     if (isIff(node)) return iff(condition, node.body);
-    if (isConditionalGotoStatement(node)) return conditionalGoto(condition, node.trueLabel, node.falseLabel);
+    if (isConditionalGotoStatement(node)) return conditionalGoto(condition, node.trueLabel, node.falseLabel, node.originalStatement);
 
     throw new Error("Unsupported node " + JSON.stringify(node));
 }

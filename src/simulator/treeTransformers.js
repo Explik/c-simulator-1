@@ -33,7 +33,7 @@ function getEvaluationTreeIffStatement(node) {
 
     // No support for else yet...
     return [
-        conditionalGoto(node.condition, trueLabel, falseLabel),
+        conditionalGoto(node.condition, trueLabel, falseLabel, node),
         trueLabel,
         ...getEvaluationTreeStatement(node.body),
         goto(endLabel),
@@ -54,7 +54,7 @@ function getEvaluationTreeForLoopStatement(node) {
     return [
         node.initializer,
         beginLabel,
-        isExpressionStatement(node.condition) ? conditionalGoto(node.condition.value, bodyLabel, endLabel) : goto(bodyLabel),
+        isExpressionStatement(node.condition) ? conditionalGoto(node.condition.value, bodyLabel, endLabel, node.condition) : goto(bodyLabel),
         bodyLabel,
         ...getEvaluationTreeStatement(node.body),
         node.update,
