@@ -4,6 +4,8 @@
     <variable-component :variables="this.currentVariables" />
     <div>
       <button @click="stepBackward" style="display: inline-block"><i class="material-icons">skip_previous</i></button>
+      <button v-if="!isPlaying" @click="startPlaying" style="display: inline-block"><i class="material-icons">play_arrow</i></button>
+      <button v-else @click="stopPlaying" style="display: inline-block"><i class="material-icons">pause</i></button>
       <button @click="stepForward" style="display: inline-block"><i class="material-icons">skip_next</i></button>
     </div>
   </div>
@@ -27,7 +29,9 @@ export default {
   components: {SourceComponent, VariableComponent},
   data() {
     return {
-      states: [this.initialState]
+      states: [this.initialState],
+      isPlaying: false,
+      playInterval: undefined
     };
   },
   computed: {
@@ -61,6 +65,14 @@ export default {
       console.log("step backward");
       if (this.states.length > 1)
         this.states = this.states.slice(0, -1);
+    },
+    startPlaying: function() {
+      this.isPlaying = true;
+      this.playInterval = setInterval(() => this.stepForward(), 700);
+    },
+    stopPlaying: function() {
+      this.isPlaying = false;
+      clearInterval(this.playInterval);
     }
   }
 }
