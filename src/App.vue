@@ -59,7 +59,7 @@ export default {
       state:  initialState({
         root: root,
         statement: root[0],
-        expression: root[0]
+        evaluatedStatement: root[0]
       })
     };
   }

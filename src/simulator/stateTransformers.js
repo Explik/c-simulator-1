@@ -22,7 +22,7 @@ export function getHighlightedSymbols(state) {
     // Substitute current non-evaluated statement with evaluated statement
     const root = state.root;
     const statement = state.statement;
-    const evaluatedStatement = isConditionalGotoStatement(state.expression) ? replaceConditionalGoto(state.expression) : state.expression;
+    const evaluatedStatement = isConditionalGotoStatement(state.evaluatedStatement) ? replaceConditionalGoto(state.evaluatedStatement) : state.evaluatedStatement;
     const substituteExpression = n => substitute(n, statement, evaluatedStatement);
     const substitutedRoot = root.map(substituteExpression);
 

@@ -1,4 +1,4 @@
-import {flatten, isIdentifier} from './tree';
+import {flatten, isConstant, isIdentifier} from './tree';
 
 function indentation(depth) {
     let buffer = "";
@@ -258,7 +258,7 @@ function findLastIndex(arr, predicate) {
 
 function getRange(symbols, node) {
     const nodeAndDescendents = flatten(node);
-    const nodeAndDescendentsWithoutIdentifiers = nodeAndDescendents.filter(s => !isIdentifier(s));
+    const nodeAndDescendentsWithoutIdentifiers = nodeAndDescendents.filter(s => !isIdentifier(s) && !isConstant(s));
     const middle = symbols.findIndex(s => nodeAndDescendentsWithoutIdentifiers.includes(s.node));
     const widthLeft = findLastIndex(symbols.slice(0, middle), s => nodeAndDescendents.includes(s.node));
     const widthRight = findFirstIndex(symbols.slice(middle), s => !nodeAndDescendents.includes(s.node));
