@@ -31,7 +31,7 @@ const step = identifier('step');
 
 const root = [
   intDeclaration(n, intConstant(7)),
-  intDeclaration(step, intConstant(1)),
+  intDeclaration(step, and(intConstant(1), intConstant(1))),
   forLoop(
       intDeclaration(i, intConstant(0)),
       statement(and(lessThanOrEqual(intConstant(0), i), lessThanOrEqual(i, n))),

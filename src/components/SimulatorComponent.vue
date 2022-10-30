@@ -1,6 +1,6 @@
 <template>
   <div>
-    <source-component :symbols="this.currentSource.symbols" :highlightedSymbolRange="this.currentSource.highlightedSymbolRange" />
+    <source-component :symbols="this.currentSymbolState.symbols" :highlightedSymbolRange="this.currentSymbolState.symbolRange" />
     <variable-component :variables="this.currentVariables" />
     <div>
       <button @click="stepBackward" style="display: inline-block"><i class="material-icons">skip_previous</i></button>
@@ -18,7 +18,8 @@ import VariableComponent from "@/components/VariableComponent";
 import {
   evaluateExpressionRecursively
 } from "@/simulator/evaluator";
-import {getHighlightedSymbols} from "@/simulator/stateTransformers";
+import {getSymbolState} from "@/simulator/stateTransformers";
+import {isGotoStatement} from "@/simulator/tree";
 
 export default {
   name: 'SimulatorComponent',
@@ -37,8 +38,8 @@ export default {
     currentState: function() {
       return this.states[this.states.length - 1];
     },
-    currentSource: function() {
-      return getHighlightedSymbols(this.currentState);
+    currentSymbolState: function() {
+      return getSymbolState(this.currentState);
     },
     currentVariables: function() {
       return this.currentState.variables;
@@ -47,7 +48,13 @@ export default {
   methods: {
     stepForward: function() {
       console.log("step forward");
-      let newState = evaluateExpressionRecursively(this.currentState);
+
+      let newState;
+      do {
+        newState =  evaluateExpressionRecursively(this.currentState);
+      }
+      while (isGotoStatement(newState.evaluatedStatement));
+
       console.log(newState);
       this.states = [
           ...this.states,

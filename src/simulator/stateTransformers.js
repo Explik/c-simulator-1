@@ -9,6 +9,15 @@ import {
     withValue
 } from "@/simulator/tree";
 
+function getExpressionFromConditionalGoto(node) {
+    if (hasValue(node.originalStatement))
+        return node.originalStatement.value;
+    if (hasCondition(node.originalStatement))
+        return node.originalStatement.condition;
+
+    throw new Error("Unsupported node: " + JSON.stringify(node));
+}
+
 function replaceConditionalGoto(node) {
     if (hasValue(node.originalStatement))
         return withValue(node.originalStatement, node.condition);
@@ -18,24 +27,32 @@ function replaceConditionalGoto(node) {
     throw new Error("Unsupported node: " + JSON.stringify(node));
 }
 
-export function getHighlightedSymbols(state) {
+function getEvaluatedRoot(root, statement, evaluatedStatement) {
     // Substitute current non-evaluated statement with evaluated statement
-    const root = state.root;
-    const statement = state.statement;
-    const evaluatedStatement = isConditionalGotoStatement(state.evaluatedStatement) ? replaceConditionalGoto(state.evaluatedStatement) : state.evaluatedStatement;
-    const substituteExpression = n => substitute(n, statement, evaluatedStatement);
-    const substitutedRoot = root.map(substituteExpression);
+    const replacementStatement = isConditionalGotoStatement(evaluatedStatement) ? replaceConditionalGoto(evaluatedStatement) : evaluatedStatement;
+    const substituteExpression = n => substitute(n, statement, replacementStatement);
 
+    return root.map(substituteExpression);
+}
+
+function getSymbols(evaluatedStatements) {
     // Calculate symbols of evaluated statements
     const getSymbolList = n => [...symbolList(n), { value: "\n", node: n }];
-    const symbols = substitutedRoot.flatMap(getSymbolList);
-    const highlightedSymbols = highlightSyntax(symbols);
+    const symbols = evaluatedStatements.flatMap(getSymbolList);
 
-    // Calculate range of current statement
-    const range = getRange(highlightedSymbols, evaluatedStatement);
+    return highlightSyntax(symbols);
+}
+
+export function getSymbolState(state) {
+    const statement = isConditionalGotoStatement(state.statement) ? getExpressionFromConditionalGoto(state.statement) : state.statement;
+    const evaluatedStatement = isConditionalGotoStatement(state.evaluatedStatement) ? getExpressionFromConditionalGoto(state.evaluatedStatement) : state.evaluatedStatement;
+
+    const root = getEvaluatedRoot(state.root, statement, evaluatedStatement);
+    const symbols = getSymbols(root);
+    const range = getRange(symbols, evaluatedStatement);
 
     return {
-        symbols: highlightedSymbols,
-        highlightedSymbolRange: range
+      symbols: symbols,
+      symbolRange: range
     };
 }

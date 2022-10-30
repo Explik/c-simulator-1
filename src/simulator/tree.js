@@ -431,7 +431,7 @@ function withCondition(node, condition) {
 }
 
 function withUpdate(node, update) {
-    if (isForLoop(node)) return forLoop(node.initializer, node.constructor, update, node.body);
+    if (isForLoop(node)) return forLoop(node.initializer, node.condition, update, node.body);
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
@@ -582,15 +582,12 @@ function applyExpressionStatement(node, callback) {
 }
 
 function applyForLoopStatement(node, callback) {
-    const initializer = callback(node.initializer);
-    const condition = callback(node.condition);
-    const update = callback(node.update);
-    const body = callback(node.body);
-
-    console.log(JSON.stringify(node.condition));
-    console.log(JSON.stringify(callback(node.condition)));
-
-    return forLoop(initializer, condition, update, body);
+    const node1 = callback(node);
+    const node2 = withInitializer(node1, applyExpressionAndStatement(node.initializer, callback));
+    const node3 = withCondition(node2, applyExpressionAndStatement(node.condition, callback));
+    const node4 = withUpdate(node3, applyExpressionAndStatement(node.update, callback));
+    const node5 = withBody(node4, applyExpressionAndStatement(node.body, callback));
+    return node5;
 }
 
 function applyIfStatement(node, callback) {
