@@ -1,4 +1,5 @@
-import {flatten, isConstant, isIdentifier} from './tree';
+import {flatten} from "@/simulator/treeModifiers";
+import {isConstant, isIdentifier} from "@/simulator/treePredicates";
 
 function indentation(depth) {
     let buffer = "";

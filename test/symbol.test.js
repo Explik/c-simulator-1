@@ -8,7 +8,7 @@ import {
   stringDeclaration,
   and,
   lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement
-} from "../src/simulator/tree";
+} from "@/simulator/treeNodes\'";
 import {symbolList, stringify, symbolMap, getRange, getTransformedRange, transformRange} from "../src/simulator/symbol";
 
 describe('symbol', () => {

@@ -17,7 +17,7 @@ import {
     forLoop,
     block,
     nullStatement
-} from "../src/simulator/tree";
+} from "@/simulator/treeNodes\'";
 import {highlightSyntax} from "../src/simulator/symbolTransformers";
 
 describe('symbolTransformers', () => {

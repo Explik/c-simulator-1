@@ -1,33 +1,3 @@
-import {
-    intConstant,
-    withLeft,
-    withRight,
-    isIdentifier,
-    isConstant,
-    isExpression,
-    isAnd,
-    isTrue,
-    numericalValue,
-    isStatement,
-    isEqual,
-    isAssign,
-    isAddAssign,
-    withValue,
-    isIncrement,
-    hasLeft,
-    hasRight,
-    hasValue,
-    isInvoke,
-    withArgument,
-    isLessThanOrEqual,
-    isFalse,
-    isIff,
-    isExpressionStatement,
-    isDeclaration,
-    withCondition, isConditionalJumpStatement, isJumpStatement, voidConstant
-} from "./tree";
-import {getEvaluationTree} from "@/simulator/treeTransformers";
-
 /** @typedef {Object} State
  *  @property {Object[]} root
  *  @property {Object[]} evaluatedRoot
@@ -43,6 +13,19 @@ import {getEvaluationTree} from "@/simulator/treeTransformers";
  *  @property {Object?} variable
  *  @property {string?} stdout
  */
+
+import {
+    hasLeft, hasRight, hasValue, isAddAssign, isAnd, isAssign,
+    isConditionalJumpStatement,
+    isConstant, isDeclaration, isEqual,
+    isExpression, isExpressionStatement,
+    isIdentifier, isIff, isIncrement, isInvoke, isJumpStatement, isLessThanOrEqual,
+    isStatement,
+    isTrue, isFalse
+} from "@/simulator/treePredicates";
+import {getEvaluationTree} from "@/simulator/treeTransformers";
+import {numericalValue, withArgument, withCondition, withLeft, withRight, withValue} from "@/simulator/treeModifiers";
+import {intConstant, voidConstant} from "@/simulator/treeNodes";
 
 /**
  *

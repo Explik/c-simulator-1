@@ -2,17 +2,11 @@ import {
     isAddAssign,
     isAnd,
     isAssign,
-    isConstant,
+    isConstant, isDeclaration,
     isEqual,
-    isExpression,
-    isForLoop,
-    isIdentifier,
-    isIncrement,
-    isLessThanOrEqual,
-    isStatement,
-    isIff,
-    isDeclaration, isInvoke
-} from "./tree";
+    isExpression, isForLoop,
+    isIdentifier, isIff, isIncrement, isInvoke, isLessThanOrEqual, isStatement
+} from "@/simulator/treePredicates";
 
 export function stringify(symbols) {
     return symbols.map(s => s.value).join("");

@@ -9,7 +9,7 @@ import {
     and,
     lessThanOrEqual, assign, addAssign, increment, invoke, equal, statement, forLoop, block, nullStatement,
     iff, withLeft, withRight, withValue, withArgument, withExpression, withCondition
-} from "../src/simulator/tree";
+} from "@/simulator/treeNodes\'";
 import {
     evaluate,
     evaluateExpression,

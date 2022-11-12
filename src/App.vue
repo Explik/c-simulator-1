@@ -20,7 +20,7 @@ import {
   lessThanOrEqual,
   statement,
   stringConstant
-} from "@/simulator/tree";
+} from "@/simulator/treeNodes";
 import SimulatorComponent from "@/components/SimulatorComponent";
 
 const i = identifier('i');

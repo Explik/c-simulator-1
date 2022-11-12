@@ -19,7 +19,7 @@ import {
   evaluateExpressionRecursively
 } from "@/simulator/evaluator";
 import {getSymbolState} from "@/simulator/stateTransformers";
-import {isJumpStatement} from "@/simulator/tree";
+import {isJumpStatement} from "@/simulator/treePredicates";
 
 export default {
   name: 'SimulatorComponent',

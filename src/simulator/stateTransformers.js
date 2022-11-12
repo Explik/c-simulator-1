@@ -1,13 +1,7 @@
 import {getRange, symbolList} from "@/simulator/symbol";
 import {highlightSyntax} from "@/simulator/symbolTransformers";
-import {
-    hasCondition,
-    hasValue,
-    isConditionalJumpStatement,
-    substitute,
-    withCondition,
-    withValue
-} from "@/simulator/tree";
+import {hasValue, isConditionalJumpStatement} from "@/simulator/treePredicates";
+import {hasCondition, withCondition, withValue, substitute} from "@/simulator/treeModifiers";
 
 function getExpressionFromConditionalJump(node) {
     if (hasValue(node.originalStatement))

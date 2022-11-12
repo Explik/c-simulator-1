@@ -1,14 +1,5 @@
-import {
-    conditionalJump,
-    jump,
-    isBlock,
-    isDeclaration,
-    isExpressionStatement,
-    isForLoop,
-    isIff,
-    label,
-    undeclaration
-} from "@/simulator/tree";
+import {isBlock, isDeclaration, isExpressionStatement, isForLoop, isIff} from "@/simulator/treePredicates";
+import {conditionalJump, jump, label, undeclaration} from "@/simulator/treeNodes";
 
 function getEvaluationTreeBlockStatement(node) {
     if (!isBlock(node))
