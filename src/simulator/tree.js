@@ -59,15 +59,15 @@ function nullStatement() {
     };
 }
 
-function goto(label) {
+function jump(label) {
     return {
         type: "statement",
-        statementType: "goto",
+        statementType: "jump",
         label: label
     }
 }
 
-function conditionalGoto(condition, trueLabel, falseLabel, originalStatement) {
+function conditionalJump(condition, trueLabel, falseLabel, originalStatement) {
     if (!isExpression(condition))
         throw new Error("condition is not an expression");
     if (!isStatement(originalStatement))
@@ -75,7 +75,7 @@ function conditionalGoto(condition, trueLabel, falseLabel, originalStatement) {
 
     return {
         type: "statement",
-        statementType: "conditional-goto",
+        statementType: "conditional-jump",
         condition: condition,
         trueLabel: trueLabel,
         falseLabel: falseLabel,
@@ -250,12 +250,12 @@ function isStatement(node) {
     return node.type === "statement";
 }
 
-function isGotoStatement(node) {
-    return node.type === "statement" && node.statementType === "goto";
+function isJumpStatement(node) {
+    return node.type === "statement" && node.statementType === "jump";
 }
 
-function isConditionalGotoStatement(node) {
-    return node.type === "statement" && node.statementType === "conditional-goto";
+function isConditionalJumpStatement(node) {
+    return node.type === "statement" && node.statementType === "conditional-jump";
 }
 
 function isDeclaration(node) {
@@ -419,13 +419,13 @@ function withInitializer(node, initializer) {
 }
 
 export function hasCondition(node) {
-    return isForLoop(node) || isIff(node) || isConditionalGotoStatement(node);
+    return isForLoop(node) || isIff(node) || isConditionalJumpStatement(node);
 }
 
 function withCondition(node, condition) {
     if (isForLoop(node)) return forLoop(node.initializer, condition, node.update, node.body);
     if (isIff(node)) return iff(condition, node.body);
-    if (isConditionalGotoStatement(node)) return conditionalGoto(condition, node.trueLabel, node.falseLabel, node.originalStatement);
+    if (isConditionalJumpStatement(node)) return conditionalJump(condition, node.trueLabel, node.falseLabel, node.originalStatement);
 
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
@@ -694,9 +694,9 @@ export {
     substitute,
     undeclaration,
     label,
-    goto,
-    conditionalGoto,
-    isGotoStatement,
-    isConditionalGotoStatement,
+    jump,
+    conditionalJump,
+    isJumpStatement,
+    isConditionalJumpStatement,
     voidConstant
 };

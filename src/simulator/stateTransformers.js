@@ -3,13 +3,13 @@ import {highlightSyntax} from "@/simulator/symbolTransformers";
 import {
     hasCondition,
     hasValue,
-    isConditionalGotoStatement,
+    isConditionalJumpStatement,
     substitute,
     withCondition,
     withValue
 } from "@/simulator/tree";
 
-function getExpressionFromConditionalGoto(node) {
+function getExpressionFromConditionalJump(node) {
     if (hasValue(node.originalStatement))
         return node.originalStatement.value;
     if (hasCondition(node.originalStatement))
@@ -18,7 +18,7 @@ function getExpressionFromConditionalGoto(node) {
     throw new Error("Unsupported node: " + JSON.stringify(node));
 }
 
-function replaceConditionalGoto(node) {
+function replaceConditionalJump(node) {
     if (hasValue(node.originalStatement))
         return withValue(node.originalStatement, node.condition);
     if (hasCondition(node.originalStatement))
@@ -29,7 +29,7 @@ function replaceConditionalGoto(node) {
 
 function getEvaluatedRoot(root, statement, evaluatedStatement) {
     // Substitute current non-evaluated statement with evaluated statement
-    const replacementStatement = isConditionalGotoStatement(evaluatedStatement) ? replaceConditionalGoto(evaluatedStatement) : evaluatedStatement;
+    const replacementStatement = isConditionalJumpStatement(evaluatedStatement) ? replaceConditionalJump(evaluatedStatement) : evaluatedStatement;
     const substituteExpression = n => substitute(n, statement, replacementStatement);
 
     return root.map(substituteExpression);
@@ -44,8 +44,8 @@ function getSymbols(evaluatedStatements) {
 }
 
 export function getSymbolState(state) {
-    const statement = isConditionalGotoStatement(state.statement) ? getExpressionFromConditionalGoto(state.statement) : state.statement;
-    const evaluatedStatement = isConditionalGotoStatement(state.evaluatedStatement) ? getExpressionFromConditionalGoto(state.evaluatedStatement) : state.evaluatedStatement;
+    const statement = isConditionalJumpStatement(state.statement) ? getExpressionFromConditionalJump(state.statement) : state.statement;
+    const evaluatedStatement = isConditionalJumpStatement(state.evaluatedStatement) ? getExpressionFromConditionalJump(state.evaluatedStatement) : state.evaluatedStatement;
 
     const root = getEvaluatedRoot(state.root, statement, state.evaluatedStatement);
     const symbols = getSymbols(root);

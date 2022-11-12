@@ -19,7 +19,7 @@ import {
   evaluateExpressionRecursively
 } from "@/simulator/evaluator";
 import {getSymbolState} from "@/simulator/stateTransformers";
-import {isGotoStatement} from "@/simulator/tree";
+import {isJumpStatement} from "@/simulator/tree";
 
 export default {
   name: 'SimulatorComponent',
@@ -53,7 +53,7 @@ export default {
       do {
         newState =  evaluateExpressionRecursively(this.currentState);
       }
-      while (isGotoStatement(newState.evaluatedStatement));
+      while (isJumpStatement(newState.evaluatedStatement));
 
       console.log(newState);
       this.states = [

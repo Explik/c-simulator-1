@@ -24,7 +24,7 @@ import {
     isIff,
     isExpressionStatement,
     isDeclaration,
-    withCondition, isConditionalGotoStatement, isGotoStatement, voidConstant
+    withCondition, isConditionalJumpStatement, isJumpStatement, voidConstant
 } from "./tree";
 import {getEvaluationTree} from "@/simulator/treeTransformers";
 
@@ -173,7 +173,7 @@ function evaluateValue(state, callback) {
 }
 
 function evaluateCondition(state, callback) {
-    if (!isIff(state.evaluatedStatement) && !isConditionalGotoStatement(state.evaluatedStatement))
+    if (!isIff(state.evaluatedStatement) && !isConditionalJumpStatement(state.evaluatedStatement))
         throw new Error("state.evaluatedStatement has no iff");
 
     const {evaluatedStatement, variables} = callback(mergeState(state, {evaluatedStatement: state.evaluatedStatement.condition}));
@@ -366,7 +366,7 @@ function evaluateDeclarationStatement(state, callback) {
     });
 }
 
-function evaluateGotoStatement(state) {
+function evaluateJumpStatement(state) {
     const label = state.evaluatedStatement.label;
     const indexInRoot = state.statements.findIndex(s => s === label);
     if (indexInRoot === -1) throw new Error("Label " + label.name + "does not exist in tree");
@@ -381,7 +381,7 @@ function evaluateGotoStatement(state) {
     });
 }
 
-function evaluateConditionalGotoStatement(state, callback) {
+function evaluateConditionalJumpStatement(state, callback) {
     if (!isConstant(state.evaluatedStatement.condition))
         return evaluateCondition(state, callback);
 
@@ -419,8 +419,8 @@ function evaluateExpression(state, callback) {
     // Statements
     if (isExpressionStatement(state.evaluatedStatement)) return evaluateExpressionStatement(state, callback);
     if (isDeclaration(state.evaluatedStatement)) return evaluateDeclarationStatement(state, callback);
-    if (isGotoStatement(state.evaluatedStatement)) return evaluateGotoStatement(state, callback);
-    if (isConditionalGotoStatement(state.evaluatedStatement)) return evaluateConditionalGotoStatement(state, callback);
+    if (isJumpStatement(state.evaluatedStatement)) return evaluateJumpStatement(state, callback);
+    if (isConditionalJumpStatement(state.evaluatedStatement)) return evaluateConditionalJumpStatement(state, callback);
 
     throw new Error("Unsupported node " + JSON.stringify(state.evaluatedStatement));
 }

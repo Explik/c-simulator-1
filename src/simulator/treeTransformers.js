@@ -1,5 +1,6 @@
 import {
-    conditionalGoto, goto,
+    conditionalJump,
+    jump,
     isBlock,
     isDeclaration,
     isExpressionStatement,
@@ -33,12 +34,12 @@ function getEvaluationTreeIffStatement(node) {
 
     // No support for else yet...
     return [
-        conditionalGoto(node.condition, trueLabel, falseLabel, node),
+        conditionalJump(node.condition, trueLabel, falseLabel, node),
         trueLabel,
         ...getEvaluationTreeStatement(node.body),
-        goto(endLabel),
+        jump(endLabel),
         falseLabel,
-        goto(endLabel),
+        jump(endLabel),
         endLabel
     ];
 }
@@ -54,11 +55,11 @@ function getEvaluationTreeForLoopStatement(node) {
     return [
         node.initializer,
         beginLabel,
-        isExpressionStatement(node.condition) ? conditionalGoto(node.condition.value, bodyLabel, endLabel, node.condition) : goto(bodyLabel),
+        isExpressionStatement(node.condition) ? conditionalJump(node.condition.value, bodyLabel, endLabel, node.condition) : jump(bodyLabel),
         bodyLabel,
         ...getEvaluationTreeStatement(node.body),
         node.update,
-        goto(bodyLabel),
+        jump(bodyLabel),
         endLabel,
         undeclaration(node.initializer.identifier)
     ];
