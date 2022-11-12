@@ -547,106 +547,95 @@ function flatten(node) {
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
-
-function applyBinaryOperator(node, callback) {
-    const left = callback(node.left);
-    const right = callback(node.right);
-    return withRight(withLeft(node, left), right);
+function substituteBlock(node, target, replacement) {
+    const statements = node.statements.map(s => substitute(s, target, replacement));
+    return block(...statements);
 }
 
-function applyLeftOperator(node, callback) {
-    const identifier = callback(node.identifier);
-    return withIdentifier(node, identifier);
-}
-
-function applyAssignOperator(node, callback) {
-    const identifier = callback(node.identifier);
-    const value = callback(node.value);
-    return withValue(withIdentifier(node, identifier), value);
-}
-
-function applyInvokeOperator(node, callback) {
-    const identifier = callback(node.identifier);
-    const args = node.arguments.map(callback);
-    return invoke(identifier, ...args);
-}
-
-function applyBlockStatement(node, callback) {
-    const statements = node.statements.map(callback);
-    return withStatements(node, statements);
-}
-
-function applyExpressionStatement(node, callback) {
-    const value = callback(node.value);
+function substituteExpressionStatement(node, target, replacement) {
+    const value = substitute(node.value, target, replacement);
     return withValue(node, value);
 }
 
-function applyForLoopStatement(node, callback) {
-    const node1 = callback(node);
-    const node2 = withInitializer(node1, applyExpressionAndStatement(node.initializer, callback));
-    const node3 = withCondition(node2, applyExpressionAndStatement(node.condition, callback));
-    const node4 = withUpdate(node3, applyExpressionAndStatement(node.update, callback));
-    const node5 = withBody(node4, applyExpressionAndStatement(node.body, callback));
-    return node5;
+function substituteForLoopStatement(node, target, replacement) {
+    const initializer = substitute(node.initializer, target, replacement);
+    const condition = substitute(node.condition, target, replacement);
+    const update = substitute(node.update, target, replacement);
+    const body = substitute(node.body, target, replacement);
+
+    return forLoop(initializer, condition, update, body);
 }
 
-function applyIfStatement(node, callback) {
-    const condition = callback(node.condition);
-    const body = callback(node.body);
+function substituteIfStatement(node, target, replacement) {
+    const condition = substitute(node.condition, target, replacement);
+    const body = substitute(node.body, target, replacement);
     return iff(condition, body);
 }
 
-function applyExpressionAndStatement(node, callback) {
+function substituteBinaryOperator(node, target, replacement) {
+    const left = substitute(node.left, target, replacement);
+    const right = substitute(node.right, target, replacement);
+    return withRight(withLeft(node, left), right);
+}
+
+function substituteLeftOperator(node, target, replacement) {
+    const identifier = substitute(node.identifier, target, replacement);
+    return withIdentifier(node, identifier);
+}
+
+function substituteAssignOperator(node, target, replacement) {
+    const identifier = substitute(node.identifier, target, replacement);
+    const value = substitute(node.value, target, replacement);
+    return withValue(withIdentifier(node, identifier), value);
+}
+
+function substituteInvokeOperator(node, target, replacement) {
+    const identifier = substitute(node.identifier, target, replacement);
+    const args = node.arguments.map(s => substitute(s, target, replacement));
+    return invoke(identifier, ...args);
+}
+
+function substitute(node, target, replacement) {
+    if (node === target)
+        return replacement;
+
     if(node.type === "statement") {
         if (node.statementType === "block")
-            return applyBlockStatement(node, callback);
+            return substituteBlock(node, target, replacement);
         if (node.statementType === "declaration")
-            return applyAssignOperator(node, callback);
+            return substituteAssignOperator(node, target, replacement);
         if (node.statementType === "expression")
-            return applyExpressionStatement(node, callback);
+            return substituteExpressionStatement(node, target, replacement);
         if (node.statementType === "for-loop")
-            return applyForLoopStatement(node, callback);
+            return substituteForLoopStatement(node, target, replacement);
         if (node.statementType === "if")
-            return applyIfStatement(node, callback);
+            return substituteIfStatement(node, target, replacement);
         throw new Error("Unsupported statementType " + node.statementType);
     }
     if (node.type === "expression") {
         if (node.operator === "and")
-            return applyBinaryOperator(node, callback);
+            return substituteBinaryOperator(node, target, replacement);
         if (node.operator === "equal")
-            return applyBinaryOperator(node, callback);
+            return substituteBinaryOperator(node, target, replacement);
         if (node.operator === "less-than-or-equal")
-            return applyBinaryOperator(node, callback);
+            return substituteBinaryOperator(node, target, replacement);
         if (node.operator === "assign")
-            return applyAssignOperator(node, callback);
+            return substituteAssignOperator(node, target, replacement);
         if (node.operator === "add-assign")
-            return applyAssignOperator(node, callback);
+            return substituteAssignOperator(node, target, replacement);
         if (node.operator === "increment")
-            return applyLeftOperator(node, callback);
+            return substituteLeftOperator(node, target, replacement);
         if (node.operator === "invoke")
-            return applyInvokeOperator(node, callback);
+            return substituteInvokeOperator(node, target, replacement);
         throw new Error("Unsupported operator " + node.operator);
     }
     if (node.type === "constant")
-        return callback(node);
+        return node;
     if (node.type === "identifier")
-        return callback(node);
+        return node;
     throw new Error("Unsupported node " + JSON.stringify(node));
 }
 
-function apply(node, callback) {
-    // Applies the callback to the root
-    return applyExpressionAndStatement(node, callback);
-}
-
-function substitute(root, target, replacement) {
-    if (root === target)
-        return replacement;
-
-    return apply(root, (n) => {
-        return n === target ? replacement : n
-    });
-}
 
 export {
     identifier,

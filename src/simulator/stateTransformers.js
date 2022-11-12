@@ -47,7 +47,7 @@ export function getSymbolState(state) {
     const statement = isConditionalGotoStatement(state.statement) ? getExpressionFromConditionalGoto(state.statement) : state.statement;
     const evaluatedStatement = isConditionalGotoStatement(state.evaluatedStatement) ? getExpressionFromConditionalGoto(state.evaluatedStatement) : state.evaluatedStatement;
 
-    const root = getEvaluatedRoot(state.root, statement, evaluatedStatement);
+    const root = getEvaluatedRoot(state.root, statement, state.evaluatedStatement);
     const symbols = getSymbols(root);
     const range = getRange(symbols, evaluatedStatement);
 
